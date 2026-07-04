@@ -655,7 +655,7 @@
                     h('button', { onClick: function() { onMyBookingsClick(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-gray-700 font-medium hover:bg-gray-50 rounded-xl' }, '📋 我的预约'),
                     h('button', { onClick: function() { onLogout(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-red-500 font-medium hover:bg-red-50 rounded-xl' }, '退出登录')
                   )
-                : h('button', { onClick: function() { onLoginClick(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-gray-700 font-medium' }, '登录'),
+                : h('button', { onClick: function() { alert('点击了移动端登录'); onLoginClick(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-gray-700 font-medium' }, '登录'),
               h('button', { onClick: function() { onBookClick(); setMenuOpen(false); }, className: 'w-full py-3 bg-accent-500 text-white rounded-xl font-semibold' }, '免费试听')
             )
           )
