@@ -695,7 +695,7 @@
               h('span', null, (tutor.students_count || 0) + '名学员')
             ),
             h('button', { onClick: function() { onBook(tutor); },
-              className: 'px-5 py-2.5 bg-accent-500 text-white text-sm font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200 active:scale-[0.97]' }, '预约试听')
+              className: 'px-6 py-3 bg-accent-500 text-white text-sm font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200 active:scale-[0.97] min-h-[44px]' }, '预约试听')
           )
         )
       );
@@ -853,7 +853,7 @@
                 : h('button', { onClick: openAuth, className: 'px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer' }, '登录'),
               h('button', { onClick: onBookClick, className: 'px-5 py-2.5 bg-accent-500 text-white text-sm font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200' }, '免费试听')
             ),
-            h('button', { className: 'md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors', onClick: function() { setMenuOpen(!menuOpen); } },
+            h('button', { className: 'md:hidden p-3 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center', onClick: function() { setMenuOpen(!menuOpen); } },
               menuOpen ? h(XIcon) : h(MenuIcon)
             )
           )
@@ -1033,26 +1033,26 @@
             h('h2', { className: 'text-3xl lg:text-4xl font-bold text-gray-900 mb-3' }, '严选优质导师'),
             h('p', { className: 'text-gray-500 max-w-lg mx-auto' }, '每位导师均经过严格筛选，确保教学质量与学习体验')
           ),
-          // 学段筛选
-          h('div', { className: 'flex justify-center gap-2 mb-4 flex-wrap' },
-            h('div', { className: 'text-xs text-gray-400 self-center mr-2 font-medium' }, '学段'),
+          // 学段筛选（移动端可横向滑动）
+          h('div', { className: 'flex justify-start md:justify-center gap-2 mb-4 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 flex-wrap md:flex-nowrap' },
+            h('span', { className: 'text-xs text-gray-400 self-center mr-1 font-medium whitespace-nowrap' }, '学段'),
             GRADE_LEVELS.map(function(grade) {
               return h('button', { key: grade, onClick: function() { setActiveGrade(grade); },
-                className: 'px-5 py-2 rounded-xl text-sm font-medium transition-all ' +
+                className: 'px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ' +
                   (activeGrade === grade
                     ? 'bg-accent-500 text-white shadow-lg shadow-accent-200'
-                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100') }, grade);
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100 active:bg-gray-200') }, grade);
             })
           ),
-          // 科目筛选
-          h('div', { className: 'flex justify-center gap-2 mb-10 flex-wrap' },
-            h('div', { className: 'text-xs text-gray-400 self-center mr-2 font-medium' }, '科目'),
+          // 科目筛选（移动端可横向滑动）
+          h('div', { className: 'flex justify-start md:justify-center gap-2 mb-10 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 flex-wrap md:flex-nowrap' },
+            h('span', { className: 'text-xs text-gray-400 self-center mr-1 font-medium whitespace-nowrap' }, '科目'),
             SUBJECTS.map(function(subject) {
               return h('button', { key: subject, onClick: function() { setActiveSubject(subject); },
-                className: 'px-5 py-2 rounded-xl text-sm font-medium transition-all ' +
+                className: 'px-4 py-2.5 rounded-xl text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ' +
                   (activeSubject === subject
                     ? 'bg-primary-600 text-white shadow-lg shadow-primary-200'
-                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100') }, subject);
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100 active:bg-gray-200') }, subject);
             })
           ),
           loading ? h('div', { className: 'text-center py-16' },
