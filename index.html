@@ -883,9 +883,55 @@
     // ─── Hero Section ───
     function HeroSection(props) {
       var onBookClick = props.onBookClick;
+      var onSearch = props.onSearch;
       var searchState = useState('');
       var searchText = searchState[0];
       var setSearchText = searchState[1];
+
+      // 关键词 → 科目映射
+      var KEYWORD_MAP = {
+        '数学': '数学', '物理': '物理', '英语': '英语', '化学': '化学',
+        '语文': '语文', '历史': '历史', '政治': '政治', '地理': '地理', '生物': '生物',
+        '理科': ['数学', '物理', '化学', '生物'],
+        '文科': ['语文', '英语', '历史', '政治', '地理']
+      };
+
+      var handleSearch = function() {
+        var keyword = searchText.trim();
+        if (!keyword) return;
+
+        // 检查关键词映射
+        var matched = null;
+        Object.keys(KEYWORD_MAP).forEach(function(k) {
+          if (keyword.indexOf(k) !== -1) {
+            matched = KEYWORD_MAP[k];
+          }
+        });
+
+        // 如果没匹配到映射，直接用搜索词
+        if (!matched) matched = keyword;
+
+        // 滚动到导师区域
+        var el = document.getElementById('tutors');
+        if (el) el.scrollIntoView({ behavior: 'smooth' });
+
+        // 触发筛选
+        if (onSearch) onSearch(matched);
+      };
+
+      var handleKeyDown = function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          handleSearch();
+        }
+      };
+
+      var quickTags = [
+        { label: '数学', keyword: '数学' },
+        { label: '英语', keyword: '英语' },
+        { label: '物理', keyword: '物理' },
+        { label: '理科', keyword: '理科' }
+      ];
 
       return h('section', { className: 'relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden' },
         h('div', { className: 'absolute inset-0 bg-gradient-to-br from-primary-50 via-white to-accent-50/30' }),
@@ -909,15 +955,19 @@
             h('div', { className: 'flex flex-col sm:flex-row gap-3 max-w-xl mx-auto' },
               h('div', { className: 'flex-1 relative' },
                 h('div', { className: 'absolute left-4 top-1/2 -translate-y-1/2 text-gray-400' }, h(SearchIcon)),
-                h('input', { type: 'text', value: searchText, onChange: function(e) { setSearchText(e.target.value); },
-                  placeholder: '搜索科目、导师或关键词...',
+                h('input', { type: 'text', value: searchText, onChange: function(e) { setSearchText(e.target.value); }, onKeyDown: handleKeyDown,
+                  placeholder: '输入科目如"数学""物理""英语""理科"...',
                   className: 'w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all text-gray-700 shadow-sm' })
               ),
-              h('button', { onClick: onBookClick, className: 'px-8 py-4 bg-accent-500 text-white font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-xl hover:shadow-accent-200 active:scale-[0.98] whitespace-nowrap' }, '立即搜索')
+              h('button', { onClick: handleSearch, className: 'px-8 py-4 bg-accent-500 text-white font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-xl hover:shadow-accent-200 active:scale-[0.98] whitespace-nowrap' }, '立即搜索')
             ),
             h('div', { className: 'flex flex-wrap justify-center gap-3 mt-6' },
-              ['高考数学冲刺', '英语口语提升', '物理竞赛辅导', '中考全科'].map(function(tag) {
-                return h('span', { key: tag, className: 'px-3 py-1.5 bg-white/80 text-gray-500 text-sm rounded-lg border border-gray-100 hover:border-primary-200 hover:text-primary-600 cursor-pointer transition-all' }, tag);
+              quickTags.map(function(tag) {
+                return h('span', { key: tag.keyword, onClick: function() {
+                  var el = document.getElementById('tutors');
+                  if (el) el.scrollIntoView({ behavior: 'smooth' });
+                  if (onSearch) onSearch(tag.keyword);
+                }, className: 'px-4 py-2 bg-white text-gray-600 text-sm rounded-lg border border-gray-200 hover:border-primary-300 hover:text-primary-600 hover:bg-primary-50 cursor-pointer transition-all shadow-sm' }, tag.label);
               })
             )
           )
@@ -930,12 +980,30 @@
       var onBookClick = props.onBookClick;
       var tutors = props.tutors;
       var loading = props.loading;
+      var searchSubject = props.searchSubject;
 
-      var activeState = useState('全部');
+      var activeState = useState(searchSubject || '全部');
       var activeSubject = activeState[0];
       var setActiveSubject = activeState[1];
 
-      var filtered = activeSubject === '全部' ? tutors : tutors.filter(function(t) { return t.subject === activeSubject; });
+      // 同步外部搜索
+      useEffect(function() {
+        if (searchSubject !== undefined && searchSubject !== null) {
+          setActiveSubject(searchSubject);
+        }
+      }, [searchSubject]);
+
+      // 过滤逻辑：支持单个科目或数组（理科→数学+物理+化学+生物）
+      var filtered;
+      if (!activeSubject || activeSubject === '全部') {
+        filtered = tutors;
+      } else if (Array.isArray(activeSubject)) {
+        filtered = tutors.filter(function(t) { return activeSubject.indexOf(t.subject) !== -1; });
+      } else {
+        filtered = tutors.filter(function(t) { return t.subject === activeSubject; });
+      }
+
+      var displaySubject = Array.isArray(activeSubject) ? '理科' : activeSubject;
 
       return h('section', { id: 'tutors', className: 'py-20 bg-white' },
         h('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' },
@@ -958,7 +1026,8 @@
               h('span', null, '加载导师数据中...')
             )
           ) : filtered.length === 0 ? h('div', { className: 'text-center py-16 text-gray-400' },
-            h('p', { className: 'text-lg' }, '暂无该科目的导师数据')
+            h('p', { className: 'text-lg' }, '暂无「' + displaySubject + '」的导师数据'),
+            h('p', { className: 'text-sm mt-2' }, '试试搜索其他科目')
           ) : h('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' },
             filtered.map(function(tutor) {
               return h(TutorCard, { key: tutor.id, tutor: tutor, onBook: onBookClick });
@@ -1131,6 +1200,11 @@
         checkSession();
       }, []);
 
+      // 搜索关键词
+      var searchSubjectState = useState('全部');
+      var searchSubject = searchSubjectState[0];
+      var setSearchSubject = searchSubjectState[1];
+
       var handleBook = function(tutor) {
         setSelectedTutor(tutor || null);
         setModalOpen(true);
@@ -1139,6 +1213,10 @@
       var handleBookingSuccess = function(info) {
         setBookingInfo(info);
         setPaymentOpen(true);
+      };
+
+      var handleSearch = function(subject) {
+        setSearchSubject(subject);
       };
 
       var handleLogout = async function() {
@@ -1154,8 +1232,8 @@
           onMyBookingsClick: function() { setBookingsModalOpen(true); },
           onLogout: handleLogout
         }),
-        h(HeroSection, { onBookClick: function() { handleBook(null); } }),
-        h(FilterSection, { onBookClick: handleBook, tutors: tutors, loading: loading }),
+        h(HeroSection, { onBookClick: function() { handleBook(null); }, onSearch: handleSearch }),
+        h(FilterSection, { onBookClick: handleBook, tutors: tutors, loading: loading, searchSubject: searchSubject }),
         h(StatsSection),
         h(FeaturesSection),
         h(Footer),
