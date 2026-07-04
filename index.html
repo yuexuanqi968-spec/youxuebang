@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>优学帮 - 家教服务平台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#1e40af', 700: '#1e3a8a', 800: '#172554', 900: '#0f172a' },
+            accent: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c' },
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .modal-backdrop { animation: backdropIn 0.2s ease-out; }
+    @keyframes backdropIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal-content { animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <div id="root"></div>
+  <script>
+    var h = React.createElement;
+    var useState = React.useState;
+    var useEffect = React.useEffect;
+
+    // ─── Supabase 初始化 ───
+    var SUPABASE_URL = 'https://ttlplvlefvqixcedskat.supabase.co';
+    var SUPABASE_KEY = 'sb_publishable_xCoCP3NC6gkD5nLEn8wfBw_yjmMg9xK';
+    var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ─── 科目列表 ───
+    var SUBJECTS = ['全部', '数学', '英语', '物理'];
+
+    var FEATURES = [
+      { icon: '🎯', title: '精准匹配', desc: 'AI智能分析学生学情，精准推荐最适合的导师，让每一分钱都花在刀刃上。' },
+      { icon: '🛡️', title: '品质保障', desc: '所有导师均经过5轮严格筛选与背景审核，教学满意度高达98.7%。' },
+      { icon: '📊', title: '效果追踪', desc: '实时学习报告与阶段性测评，家长随时掌握孩子进步轨迹。' },
+    ];
+
+    // ─── Icon Components ───
+    function MenuIcon() {
+      return h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+        h('line', { x1: '4', x2: '20', y1: '12', y2: '12' }),
+        h('line', { x1: '4', x2: '20', y1: '6', y2: '6' }),
+        h('line', { x1: '4', x2: '20', y1: '18', y2: '18' })
+      );
+    }
+    function XIcon() {
+      return h('svg', { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+        h('path', { d: 'M18 6 6 18' }),
+        h('path', { d: 'm6 6 12 12' })
+      );
+    }
+    function SearchIcon() {
+      return h('svg', { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+        h('circle', { cx: '11', cy: '11', r: '8' }),
+        h('path', { d: 'm21 21-4.3-4.3' })
+      );
+    }
+    function StarIcon(props) {
+      return h('svg', { width: 14, height: 14, viewBox: '0 0 24 24', fill: props.filled ? '#f97316' : 'none', stroke: '#f97316', strokeWidth: 2 },
+        h('polygon', { points: '12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2' })
+      );
+    }
+    function CheckCircleIcon() {
+      return h('svg', { width: 64, height: 64, viewBox: '0 0 24 24', fill: 'none', stroke: '#22c55e', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round' },
+        h('path', { d: 'M22 11.08V12a10 10 0 1 1-5.93-9.14' }),
+        h('path', { d: 'm9 11 3 3L22 4' })
+      );
+    }
+    function LoadingIcon() {
+      return h('svg', { className: 'animate-spin', width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2 },
+        h('path', { d: 'M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83' })
+      );
+    }
+
+    // ─── 支付弹窗 ───
+    function PaymentModal(props) {
+      var isOpen = props.isOpen;
+      var onClose = props.onClose;
+      var bookingInfo = props.bookingInfo;
+      var bookingId = bookingInfo ? bookingInfo.bookingId : null;
+
+      var submittedState = useState(false);
+      var submitted = submittedState[0];
+      var setSubmitted = submittedState[1];
+
+      var submittingState = useState(false);
+      var submitting = submittingState[0];
+      var setSubmitting = submittingState[1];
+
+      if (!isOpen) return null;
+
+      var handlePaymentConfirm = async function() {
+        if (!bookingId) {
+          alert('预约信息丢失，请刷新页面重试');
+          return;
+        }
+        setSubmitting(true);
+        try {
+          var result = await supabase
+            .from('bookings')
+            .update({ payment_status: 'submitted' })
+            .eq('id', bookingId);
+
+          if (result.error) {
+            alert('提交失败：' + result.error.message);
+            setSubmitting(false);
+            return;
+          }
+          setSubmitted(true);
+          setSubmitting(false);
+        } catch (err) {
+          alert('网络错误，请稍后重试');
+          setSubmitting(false);
+        }
+      };
+
+      var handleClose = function() {
+        setSubmitted(false);
+        onClose();
+      };
+
+      if (submitted) {
+        // 支付已确认
+        return h('div', { className: 'modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: handleClose },
+          h('div', { className: 'modal-content bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden', onClick: function(e) { e.stopPropagation(); } },
+            h('div', { className: 'p-6 text-center' },
+              h('div', { className: 'flex justify-center mb-4' },
+                h('svg', { width: 56, height: 56, viewBox: '0 0 24 24', fill: 'none', stroke: '#10B981', strokeWidth: 2 },
+                  h('path', { d: 'M22 11.08V12a10 10 0 1 1-5.93-9.14' }),
+                  h('polyline', { points: '22 4 12 14.01 9 11.01' })
+                )
+              ),
+              h('h3', { className: 'text-2xl font-bold text-gray-900 mb-2' }, '提交成功，待管理员确认'),
+              h('p', { className: 'text-gray-500 mb-1 text-sm' }, '请等待管理员核对收款记录后确认'),
+              h('p', { className: 'text-gray-400 mb-6 text-xs' }, '确认后我们将在24小时内联系您安排课程'),
+              h('button', { onClick: handleClose, className: 'w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors' }, '我知道了')
+            )
+          )
+        );
+      }
+
+      return h('div', { className: 'modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: handleClose },
+        h('div', { className: 'modal-content bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden', onClick: function(e) { e.stopPropagation(); } },
+          h('div', { className: 'p-6 text-center' },
+            h('div', { className: 'flex justify-center mb-4' }, h(CheckCircleIcon)),
+            h('h3', { className: 'text-2xl font-bold text-gray-900 mb-2' }, '预约成功！'),
+            h('p', { className: 'text-gray-500 mb-4 text-sm' },
+              bookingInfo && bookingInfo.tutorName
+                ? '已为您预约 ' + bookingInfo.tutorName + ' 老师的试听课'
+                : '已成功提交预约信息'
+            ),
+            h('div', { className: 'bg-gray-50 rounded-xl p-4 mb-4' },
+              h('p', { className: 'text-sm text-gray-600 mb-2 font-medium' }, '扫码支付试听费用'),
+              h('div', { className: 'w-48 h-48 mx-auto bg-white rounded-lg flex items-center justify-center overflow-hidden border-2 border-gray-200' },
+                h('img', { src: 'qrcode.jpg', alt: '微信收款码', className: 'w-full h-full object-contain' })
+              ),
+              h('p', { className: 'text-xs text-gray-400 mt-2' }, '请使用微信扫描上方二维码完成支付')
+            ),
+            h('button', {
+              onClick: handlePaymentConfirm,
+              disabled: submitting,
+              className: 'w-full py-3 mb-2 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors disabled:opacity-50'
+            }, submitting ? '提交中...' : '✅ 我已完成支付，通知后台'),
+            h('button', { onClick: handleClose, className: 'w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors' }, '稍后支付')
+          )
+        )
+      );
+    }
+
+    // ─── Booking Modal ───
+    function BookingModal(props) {
+      var isOpen = props.isOpen;
+      var onClose = props.onClose;
+      var tutor = props.tutor;
+      var onBookingSuccess = props.onBookingSuccess;
+
+      var formState = useState({ name: '', phone: '', grade: '', demand: '' });
+      var form = formState[0];
+      var setForm = formState[1];
+
+      var errorsState = useState({});
+      var errors = errorsState[0];
+      var setErrors = errorsState[1];
+
+      var loadingState = useState(false);
+      var loading = loadingState[0];
+      var setLoading = loadingState[1];
+
+      if (!isOpen) return null;
+
+      var validate = function() {
+        var e = {};
+        if (!form.name.trim()) e.name = '请输入姓名';
+        if (!/^1[3-9]\d{9}$/.test(form.phone)) e.phone = '请输入有效手机号';
+        if (!form.grade.trim()) e.grade = '请选择年级';
+        return e;
+      };
+
+      var handleSubmit = async function(e) {
+        e.preventDefault();
+        var errs = validate();
+        if (Object.keys(errs).length) { setErrors(errs); return; }
+        setErrors({});
+        setLoading(true);
+
+        try {
+          var bookingData = {
+            student_name: form.name,
+            phone: form.phone,
+            grade: form.grade,
+            demand: form.demand || null,
+            tutor_id: tutor ? tutor.id : null,
+            status: 'pending',
+            payment_status: 'unpaid'
+          };
+
+          var result = await supabase.from('bookings').insert(bookingData).select();
+
+          if (result.error) {
+            alert('提交失败：' + result.error.message);
+            setLoading(false);
+            return;
+          }
+
+          // 成功
+          var bookingId = result.data && result.data[0] ? result.data[0].id : null;
+          setForm({ name: '', phone: '', grade: '', demand: '' });
+          setLoading(false);
+          onClose();
+          onBookingSuccess({ tutorName: tutor ? tutor.name : null, bookingId: bookingId });
+        } catch (err) {
+          alert('网络错误，请稍后重试');
+          setLoading(false);
+        }
+      };
+
+      var handleClose = function() {
+        setForm({ name: '', phone: '', grade: '', demand: '' });
+        setErrors({});
+        onClose();
+      };
+
+      var handleChange = function(field, value) {
+        setForm(function(prev) {
+          var next = Object.assign({}, prev);
+          next[field] = value;
+          return next;
+        });
+        if (errors[field]) {
+          setErrors(function(prev) {
+            var next = Object.assign({}, prev);
+            next[field] = undefined;
+            return next;
+          });
+        }
+      };
+
+      return h('div', { className: 'modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: handleClose },
+        h('div', { className: 'modal-content bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden', onClick: function(e) { e.stopPropagation(); } },
+          h('div', { className: 'flex items-center justify-between p-6 border-b border-gray-100' },
+            h('div', null,
+              h('h3', { className: 'text-xl font-bold text-gray-900' }, '预约试听课'),
+              tutor ? h('p', { className: 'text-sm text-gray-500 mt-1' }, '预约导师：' + tutor.name + ' · ' + tutor.subject) : null
+            ),
+            h('button', { onClick: handleClose, className: 'p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600' }, h(XIcon))
+          ),
+          h('form', { onSubmit: handleSubmit, className: 'p-6 space-y-4' },
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '学生姓名 ', h('span', { className: 'text-red-500' }, '*')),
+              h('input', { type: 'text', value: form.name, onChange: function(e) { handleChange('name', e.target.value); }, placeholder: '请输入学生姓名',
+                className: 'w-full px-4 py-3 border rounded-xl outline-none transition-all ' + (errors.name ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100') }),
+              errors.name ? h('p', { className: 'text-red-500 text-xs mt-1' }, errors.name) : null
+            ),
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '联系电话 ', h('span', { className: 'text-red-500' }, '*')),
+              h('input', { type: 'tel', value: form.phone, onChange: function(e) { handleChange('phone', e.target.value); }, placeholder: '请输入手机号码',
+                className: 'w-full px-4 py-3 border rounded-xl outline-none transition-all ' + (errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100') }),
+              errors.phone ? h('p', { className: 'text-red-500 text-xs mt-1' }, errors.phone) : null
+            ),
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '年级 ', h('span', { className: 'text-red-500' }, '*')),
+              h('select', { value: form.grade, onChange: function(e) { handleChange('grade', e.target.value); },
+                className: 'w-full px-4 py-3 border rounded-xl outline-none transition-all appearance-none bg-white ' + (errors.grade ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100') },
+                h('option', { value: '' }, '请选择年级'),
+                h('option', null, '小学三年级'), h('option', null, '小学四年级'), h('option', null, '小学五年级'), h('option', null, '小学六年级'),
+                h('option', null, '初一'), h('option', null, '初二'), h('option', null, '初三'),
+                h('option', null, '高一'), h('option', null, '高二'), h('option', null, '高三')
+              ),
+              errors.grade ? h('p', { className: 'text-red-500 text-xs mt-1' }, errors.grade) : null
+            ),
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '学习诉求'),
+              h('textarea', { value: form.demand, onChange: function(e) { handleChange('demand', e.target.value); }, rows: '3', placeholder: '请简要描述您的学习需求，例如：希望提高数学成绩...',
+                className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none transition-all focus:border-primary-500 focus:ring-2 focus:ring-primary-100 resize-none' })
+            ),
+            h('button', { type: 'submit', disabled: loading,
+              className: 'w-full py-3.5 bg-accent-500 text-white rounded-xl font-semibold hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2' },
+              loading ? h('span', { className: 'flex items-center gap-2' }, h(LoadingIcon), '提交中...') : '提交预约'
+            )
+          )
+        )
+      );
+    }
+
+    // ─── Tutor Card ───
+    function TutorCard(props) {
+      var tutor = props.tutor;
+      var onBook = props.onBook;
+      return h('div', { className: 'fade-in bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:shadow-primary-100/50 transition-all duration-300 hover:-translate-y-1 group' },
+        h('div', { className: 'p-6' },
+          h('div', { className: 'flex items-start justify-between mb-4' },
+            h('div', { className: 'flex items-center gap-3' },
+              h('div', { className: 'w-14 h-14 rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center text-2xl' }, tutor.avatar || '👨‍🏫'),
+              h('div', null,
+                h('h3', { className: 'font-bold text-gray-900 text-lg' }, tutor.name),
+                h('span', { className: 'inline-block px-2.5 py-0.5 bg-primary-50 text-primary-600 text-xs font-medium rounded-full' }, tutor.subject)
+              )
+            ),
+            h('div', { className: 'text-right' },
+              h('div', { className: 'text-accent-600 font-bold text-xl' }, '¥' + tutor.hourly_rate),
+              h('div', { className: 'text-xs text-gray-400' }, '/小时')
+            )
+          ),
+          h('p', { className: 'text-gray-500 text-sm leading-relaxed mb-4' }, tutor.intro),
+          h('div', { className: 'flex items-center gap-2 mb-4 flex-wrap' },
+            (tutor.tags || []).map(function(tag) {
+              return h('span', { key: tag, className: 'px-2.5 py-1 bg-gray-50 text-gray-600 text-xs rounded-lg border border-gray-100' }, tag);
+            })
+          ),
+          h('div', { className: 'flex items-center justify-between pt-4 border-t border-gray-50' },
+            h('div', { className: 'flex items-center gap-3 text-sm text-gray-500' },
+              h('span', { className: 'flex items-center gap-1' }, h(StarIcon, { filled: true }), ' ' + (tutor.rating || '5.0')),
+              h('span', null, (tutor.students_count || 0) + '名学员')
+            ),
+            h('button', { onClick: function() { onBook(tutor); },
+              className: 'px-5 py-2.5 bg-accent-500 text-white text-sm font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200 active:scale-[0.97]' }, '预约试听')
+          )
+        )
+      );
+    }
+
+    // ─── Header ───
+    function Header(props) {
+      var onBookClick = props.onBookClick;
+      var menuState = useState(false);
+      var menuOpen = menuState[0];
+      var setMenuOpen = menuState[1];
+      var scrolledState = useState(false);
+      var scrolled = scrolledState[0];
+      var setScrolled = scrolledState[1];
+
+      useEffect(function() {
+        var handler = function() { setScrolled(window.scrollY > 20); };
+        window.addEventListener('scroll', handler);
+        return function() { window.removeEventListener('scroll', handler); };
+      }, []);
+
+      var navItems = ['首页', '找导师', '课程', '关于我们'];
+
+      return h('header', { className: 'fixed top-0 left-0 right-0 z-40 transition-all duration-300 ' + (scrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-transparent') },
+        h('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' },
+          h('div', { className: 'flex items-center justify-between h-16 lg:h-20' },
+            h('div', { className: 'flex items-center gap-2' },
+              h('div', { className: 'w-9 h-9 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center' },
+                h('span', { className: 'text-white font-bold text-lg' }, '优')
+              ),
+              h('span', { className: 'text-xl font-bold text-gray-900' }, '优学帮')
+            ),
+            h('nav', { className: 'hidden md:flex items-center gap-8' },
+              navItems.map(function(item) {
+                return h('a', { key: item, href: '#', className: 'text-sm font-medium transition-colors ' + (scrolled ? 'text-gray-600 hover:text-primary-600' : 'text-gray-700 hover:text-primary-600') }, item);
+              })
+            ),
+            h('div', { className: 'hidden md:flex items-center gap-3' },
+              h('button', { className: 'text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors' }, '登录'),
+              h('button', { onClick: onBookClick, className: 'px-5 py-2.5 bg-accent-500 text-white text-sm font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200' }, '免费试听')
+            ),
+            h('button', { className: 'md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors', onClick: function() { setMenuOpen(!menuOpen); } },
+              menuOpen ? h(XIcon) : h(MenuIcon)
+            )
+          )
+        ),
+        menuOpen ? h('div', { className: 'md:hidden bg-white border-t border-gray-100 shadow-lg fade-in' },
+          h('div', { className: 'px-4 py-4 space-y-1' },
+            navItems.map(function(item) {
+              return h('a', { key: item, href: '#', className: 'block px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-600 rounded-xl font-medium transition-colors' }, item);
+            }),
+            h('div', { className: 'pt-3 border-t border-gray-100 mt-2 space-y-2' },
+              h('button', { className: 'w-full text-left px-4 py-3 text-gray-700 font-medium' }, '登录'),
+              h('button', { onClick: function() { onBookClick(); setMenuOpen(false); }, className: 'w-full py-3 bg-accent-500 text-white rounded-xl font-semibold' }, '免费试听')
+            )
+          )
+        ) : null
+      );
+    }
+
+    // ─── Hero Section ───
+    function HeroSection(props) {
+      var onBookClick = props.onBookClick;
+      var searchState = useState('');
+      var searchText = searchState[0];
+      var setSearchText = searchState[1];
+
+      return h('section', { className: 'relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden' },
+        h('div', { className: 'absolute inset-0 bg-gradient-to-br from-primary-50 via-white to-accent-50/30' }),
+        h('div', { className: 'absolute top-20 right-0 w-96 h-96 bg-primary-100/40 rounded-full blur-3xl' }),
+        h('div', { className: 'absolute bottom-0 left-0 w-80 h-80 bg-accent-100/30 rounded-full blur-3xl' }),
+        h('div', { className: 'relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' },
+          h('div', { className: 'text-center max-w-3xl mx-auto' },
+            h('div', { className: 'inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 mb-6' },
+              h('span', { className: 'w-2 h-2 bg-green-500 rounded-full animate-pulse' }),
+              h('span', { className: 'text-sm text-gray-600' }, '已有 ',
+                h('span', { className: 'font-semibold text-primary-600' }, '12,840+'),
+                ' 位学生在此找到理想导师')
+            ),
+            h('h1', { className: 'text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 leading-tight mb-6' },
+              '为你匹配最合适的', h('br'),
+              h('span', { className: 'bg-gradient-to-r from-primary-600 to-accent-500 bg-clip-text text-transparent' }, '提分导师')
+            ),
+            h('p', { className: 'text-lg text-gray-500 mb-10 max-w-2xl mx-auto leading-relaxed' },
+              '覆盖全科目、全学段，严选名校师资，AI智能匹配，让每一次辅导都精准高效'
+            ),
+            h('div', { className: 'flex flex-col sm:flex-row gap-3 max-w-xl mx-auto' },
+              h('div', { className: 'flex-1 relative' },
+                h('div', { className: 'absolute left-4 top-1/2 -translate-y-1/2 text-gray-400' }, h(SearchIcon)),
+                h('input', { type: 'text', value: searchText, onChange: function(e) { setSearchText(e.target.value); },
+                  placeholder: '搜索科目、导师或关键词...',
+                  className: 'w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all text-gray-700 shadow-sm' })
+              ),
+              h('button', { onClick: onBookClick, className: 'px-8 py-4 bg-accent-500 text-white font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-xl hover:shadow-accent-200 active:scale-[0.98] whitespace-nowrap' }, '立即搜索')
+            ),
+            h('div', { className: 'flex flex-wrap justify-center gap-3 mt-6' },
+              ['高考数学冲刺', '英语口语提升', '物理竞赛辅导', '中考全科'].map(function(tag) {
+                return h('span', { key: tag, className: 'px-3 py-1.5 bg-white/80 text-gray-500 text-sm rounded-lg border border-gray-100 hover:border-primary-200 hover:text-primary-600 cursor-pointer transition-all' }, tag);
+              })
+            )
+          )
+        )
+      );
+    }
+
+    // ─── Filter Section ───
+    function FilterSection(props) {
+      var onBookClick = props.onBookClick;
+      var tutors = props.tutors;
+      var loading = props.loading;
+
+      var activeState = useState('全部');
+      var activeSubject = activeState[0];
+      var setActiveSubject = activeState[1];
+
+      var filtered = activeSubject === '全部' ? tutors : tutors.filter(function(t) { return t.subject === activeSubject; });
+
+      return h('section', { id: 'tutors', className: 'py-20 bg-white' },
+        h('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' },
+          h('div', { className: 'text-center mb-12' },
+            h('h2', { className: 'text-3xl lg:text-4xl font-bold text-gray-900 mb-3' }, '严选优质导师'),
+            h('p', { className: 'text-gray-500 max-w-lg mx-auto' }, '每位导师均经过严格筛选，确保教学质量与学习体验')
+          ),
+          h('div', { className: 'flex justify-center gap-2 mb-10 flex-wrap' },
+            SUBJECTS.map(function(subject) {
+              return h('button', { key: subject, onClick: function() { setActiveSubject(subject); },
+                className: 'px-6 py-2.5 rounded-xl text-sm font-medium transition-all ' +
+                  (activeSubject === subject
+                    ? 'bg-primary-600 text-white shadow-lg shadow-primary-200'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100') }, subject);
+            })
+          ),
+          loading ? h('div', { className: 'text-center py-16' },
+            h('div', { className: 'flex items-center justify-center gap-3 text-gray-400' },
+              h(LoadingIcon),
+              h('span', null, '加载导师数据中...')
+            )
+          ) : filtered.length === 0 ? h('div', { className: 'text-center py-16 text-gray-400' },
+            h('p', { className: 'text-lg' }, '暂无该科目的导师数据')
+          ) : h('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' },
+            filtered.map(function(tutor) {
+              return h(TutorCard, { key: tutor.id, tutor: tutor, onBook: onBookClick });
+            })
+          )
+        )
+      );
+    }
+
+    // ─── Features Section ───
+    function FeaturesSection() {
+      return h('section', { className: 'py-20 bg-gray-50' },
+        h('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' },
+          h('div', { className: 'text-center mb-12' },
+            h('h2', { className: 'text-3xl lg:text-4xl font-bold text-gray-900 mb-3' }, '为什么选择优学帮'),
+            h('p', { className: 'text-gray-500 max-w-lg mx-auto' }, '三大核心优势，让学习效果看得见')
+          ),
+          h('div', { className: 'grid grid-cols-1 md:grid-cols-3 gap-8' },
+            FEATURES.map(function(f, i) {
+              return h('div', { key: i, className: 'group bg-white p-8 rounded-2xl border border-gray-100 hover:shadow-xl hover:shadow-primary-100/50 transition-all duration-300 hover:-translate-y-2 cursor-default' },
+                h('div', { className: 'w-16 h-16 rounded-2xl bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300' }, f.icon),
+                h('h3', { className: 'text-xl font-bold text-gray-900 mb-3' }, f.title),
+                h('p', { className: 'text-gray-500 leading-relaxed' }, f.desc)
+              );
+            })
+          )
+        )
+      );
+    }
+
+    // ─── Stats ───
+    function StatsSection() {
+      var stats = [
+        { value: '12,840+', label: '注册学生' },
+        { value: '860+', label: '认证导师' },
+        { value: '98.7%', label: '满意度' },
+        { value: '156万+', label: '授课课时' },
+      ];
+      return h('section', { className: 'py-16 bg-gradient-to-r from-primary-600 to-primary-800' },
+        h('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' },
+          h('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-8' },
+            stats.map(function(s, i) {
+              return h('div', { key: i, className: 'text-center' },
+                h('div', { className: 'text-3xl lg:text-4xl font-extrabold text-white mb-1' }, s.value),
+                h('div', { className: 'text-primary-200 text-sm' }, s.label)
+              );
+            })
+          )
+        )
+      );
+    }
+
+    // ─── Footer ───
+    function Footer() {
+      var links = {
+        '平台服务': ['找导师', '课程分类', '学习测评', '学习报告'],
+        '关于我们': ['公司介绍', '加入我们', '联系方式', '合作伙伴'],
+        '帮助中心': ['常见问题', '使用指南', '隐私政策', '服务条款'],
+      };
+      return h('footer', { className: 'bg-gray-900 text-gray-400 pt-16 pb-8' },
+        h('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' },
+          h('div', { className: 'grid grid-cols-1 md:grid-cols-4 gap-12 mb-12' },
+            h('div', null,
+              h('div', { className: 'flex items-center gap-2 mb-4' },
+                h('div', { className: 'w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center' },
+                  h('span', { className: 'text-white font-bold text-lg' }, '优')
+                ),
+                h('span', { className: 'text-xl font-bold text-white' }, '优学帮')
+              ),
+              h('p', { className: 'text-sm leading-relaxed' }, '让每个学生都能找到最适合的导师，让优质教育触手可及。')
+            ),
+            Object.entries(links).map(function(entry) {
+              var title = entry[0];
+              var items = entry[1];
+              return h('div', { key: title },
+                h('h4', { className: 'text-white font-semibold mb-4' }, title),
+                h('ul', { className: 'space-y-2.5' },
+                  items.map(function(item) {
+                    return h('li', { key: item }, h('a', { href: '#', className: 'text-sm hover:text-white transition-colors' }, item));
+                  })
+                )
+              );
+            })
+          ),
+          h('div', { className: 'border-t border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4' },
+            h('p', { className: 'text-sm' }, '© 2026 优学帮 All rights reserved.'),
+            h('div', { className: 'flex gap-6' },
+              h('a', { href: '#', className: 'text-sm hover:text-white transition-colors' }, '隐私政策'),
+              h('a', { href: '#', className: 'text-sm hover:text-white transition-colors' }, '服务条款')
+            )
+          )
+        )
+      );
+    }
+
+    // ─── App ───
+    function App() {
+      var modalState = useState(false);
+      var modalOpen = modalState[0];
+      var setModalOpen = modalState[1];
+
+      var tutorState = useState(null);
+      var selectedTutor = tutorState[0];
+      var setSelectedTutor = tutorState[1];
+
+      var paymentState = useState(false);
+      var paymentOpen = paymentState[0];
+      var setPaymentOpen = paymentState[1];
+
+      var bookingInfoState = useState(null);
+      var bookingInfo = bookingInfoState[0];
+      var setBookingInfo = bookingInfoState[1];
+
+      // 从 Supabase 加载导师数据
+      var tutorsState = useState([]);
+      var tutors = tutorsState[0];
+      var setTutors = tutorsState[1];
+
+      var loadingState = useState(true);
+      var loading = loadingState[0];
+      var setLoading = loadingState[1];
+
+      useEffect(function() {
+        async function loadTutors() {
+          var result = await supabase
+            .from('tutors')
+            .select('*')
+            .eq('status', 'active')
+            .order('rating', { ascending: false });
+
+          if (result.data) {
+            setTutors(result.data);
+          }
+          setLoading(false);
+        }
+        loadTutors();
+      }, []);
+
+      var handleBook = function(tutor) {
+        setSelectedTutor(tutor || null);
+        setModalOpen(true);
+      };
+
+      var handleBookingSuccess = function(info) {
+        setBookingInfo(info);
+        setPaymentOpen(true);
+      };
+
+      return h('div', { className: 'min-h-screen' },
+        h(Header, { onBookClick: function() { handleBook(null); } }),
+        h(HeroSection, { onBookClick: function() { handleBook(null); } }),
+        h(FilterSection, { onBookClick: handleBook, tutors: tutors, loading: loading }),
+        h(StatsSection),
+        h(FeaturesSection),
+        h(Footer),
+        h(BookingModal, { isOpen: modalOpen, onClose: function() { setModalOpen(false); }, tutor: selectedTutor, onBookingSuccess: handleBookingSuccess }),
+        h(PaymentModal, { isOpen: paymentOpen, onClose: function() { setPaymentOpen(false); }, bookingInfo: bookingInfo })
+      );
+    }
+
+    var root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(h(App));
+  </script>
+</body>
+</html>

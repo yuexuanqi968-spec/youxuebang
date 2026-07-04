@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>优学帮 - 管理后台</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#1e40af', 700: '#1e3a8a', 800: '#172554', 900: '#0f172a' },
+            accent: { 50: '#fff7ed', 100: '#ffedd5', 200: '#fed7aa', 300: '#fdba74', 400: '#fb923c', 500: '#f97316', 600: '#ea580c', 700: '#c2410c' },
+          }
+        }
+      }
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+  </style>
+</head>
+<body class="bg-gray-100">
+  <div id="root"></div>
+  <script>
+    var h = React.createElement;
+    var useState = React.useState;
+    var useEffect = React.useEffect;
+
+    // ─── Supabase 初始化 ───
+    var SUPABASE_URL = 'https://ttlplvlefvqixcedskat.supabase.co';
+    var SUPABASE_KEY = 'sb_publishable_xCoCP3NC6gkD5nLEn8wfBw_yjmMg9xK';
+    var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // ─── 工具函数 ───
+    function formatDate(dateStr) {
+      var d = new Date(dateStr);
+      var month = (d.getMonth() + 1).toString().padStart(2, '0');
+      var day = d.getDate().toString().padStart(2, '0');
+      var hours = d.getHours().toString().padStart(2, '0');
+      var mins = d.getMinutes().toString().padStart(2, '0');
+      return month + '-' + day + ' ' + hours + ':' + mins;
+    }
+
+    var STATUS_MAP = {
+      pending: { label: '待确认', color: 'bg-yellow-100 text-yellow-700' },
+      confirmed: { label: '已确认', color: 'bg-blue-100 text-blue-700' },
+      completed: { label: '已完成', color: 'bg-green-100 text-green-700' },
+      cancelled: { label: '已取消', color: 'bg-gray-100 text-gray-500' }
+    };
+    var PAYMENT_MAP = {
+      unpaid: { label: '未支付', color: 'bg-red-100 text-red-600' },
+      submitted: { label: '待确认', color: 'bg-orange-100 text-orange-600' },
+      paid: { label: '已确认收款', color: 'bg-green-100 text-green-600' }
+    };
+
+    // ─── 登录页面 ───
+    function LoginPage(props) {
+      var onLogin = props.onLogin;
+      var emailState = useState('');
+      var email = emailState[0];
+      var setEmail = emailState[1];
+      var passState = useState('');
+      var password = passState[0];
+      var setPassword = passState[1];
+      var errorState = useState('');
+      var error = errorState[0];
+      var setError = errorState[1];
+      var loadingState = useState(false);
+      var loading = loadingState[0];
+      var setLoading = loadingState[1];
+
+      var handleLogin = async function(e) {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+        var result = await supabase.auth.signInWithPassword({ email: email, password: password });
+        if (result.error) {
+          setError(result.error.message);
+          setLoading(false);
+        } else {
+          onLogin(result.data.user);
+        }
+      };
+
+      return h('div', { className: 'min-h-screen flex items-center justify-center p-4' },
+        h('div', { className: 'bg-white rounded-2xl shadow-xl w-full max-w-sm p-8' },
+          h('div', { className: 'text-center mb-8' },
+            h('div', { className: 'w-14 h-14 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center mx-auto mb-4' },
+              h('span', { className: 'text-white font-bold text-2xl' }, '优')
+            ),
+            h('h1', { className: 'text-2xl font-bold text-gray-900' }, '管理后台'),
+            h('p', { className: 'text-sm text-gray-500 mt-1' }, '请使用管理员账号登录')
+          ),
+          h('form', { onSubmit: handleLogin, className: 'space-y-4' },
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, '邮箱'),
+              h('input', { type: 'email', value: email, onChange: function(e) { setEmail(e.target.value); }, placeholder: 'admin@example.com',
+                className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all' })
+            ),
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, '密码'),
+              h('input', { type: 'password', value: password, onChange: function(e) { setPassword(e.target.value); }, placeholder: '请输入密码',
+                className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all' })
+            ),
+            error ? h('p', { className: 'text-red-500 text-sm' }, error) : null,
+            h('button', { type: 'submit', disabled: loading,
+              className: 'w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors disabled:opacity-60' },
+              loading ? '登录中...' : '登录'
+            )
+          )
+        )
+      );
+    }
+
+    // ─── 预约详情弹窗 ───
+    function BookingDetailModal(props) {
+      var booking = props.booking;
+      var onClose = props.onClose;
+      var onUpdateStatus = props.onUpdateStatus;
+      var tutors = props.tutors;
+
+      if (!booking) return null;
+
+      var tutor = tutors.find(function(t) { return t.id === booking.tutor_id; });
+      var statusInfo = STATUS_MAP[booking.status] || STATUS_MAP.pending;
+      var paymentInfo = PAYMENT_MAP[booking.payment_status] || PAYMENT_MAP.unpaid;
+
+      return h('div', { className: 'fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: onClose },
+        h('div', { className: 'bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden', onClick: function(e) { e.stopPropagation(); } },
+          h('div', { className: 'p-6 border-b border-gray-100' },
+            h('div', { className: 'flex items-center justify-between' },
+              h('h3', { className: 'text-lg font-bold text-gray-900' }, '预约详情'),
+              h('button', { onClick: onClose, className: 'text-gray-400 hover:text-gray-600 text-xl' }, '✕')
+            )
+          ),
+          h('div', { className: 'p-6 space-y-4' },
+            h('div', { className: 'grid grid-cols-2 gap-4' },
+              h('div', null,
+                h('p', { className: 'text-xs text-gray-400 mb-1' }, '学生姓名'),
+                h('p', { className: 'font-medium text-gray-900' }, booking.student_name)
+              ),
+              h('div', null,
+                h('p', { className: 'text-xs text-gray-400 mb-1' }, '联系电话'),
+                h('p', { className: 'font-medium text-gray-900' }, booking.phone)
+              ),
+              h('div', null,
+                h('p', { className: 'text-xs text-gray-400 mb-1' }, '年级'),
+                h('p', { className: 'font-medium text-gray-900' }, booking.grade)
+              ),
+              h('div', null,
+                h('p', { className: 'text-xs text-gray-400 mb-1' }, '预约导师'),
+                h('p', { className: 'font-medium text-gray-900' }, tutor ? tutor.name + ' · ' + tutor.subject : '未指定')
+              )
+            ),
+            booking.demand ? h('div', null,
+              h('p', { className: 'text-xs text-gray-400 mb-1' }, '学习诉求'),
+              h('p', { className: 'text-gray-700 bg-gray-50 p-3 rounded-lg text-sm' }, booking.demand)
+            ) : null,
+            h('div', { className: 'grid grid-cols-2 gap-4' },
+              h('div', null,
+                h('p', { className: 'text-xs text-gray-400 mb-1' }, '预约状态'),
+                h('span', { className: 'inline-block px-3 py-1 rounded-full text-xs font-medium ' + statusInfo.color }, statusInfo.label)
+              ),
+              h('div', null,
+                h('p', { className: 'text-xs text-gray-400 mb-1' }, '支付状态'),
+                h('span', { className: 'inline-block px-3 py-1 rounded-full text-xs font-medium ' + paymentInfo.color }, paymentInfo.label)
+              )
+            ),
+            h('div', null,
+              h('p', { className: 'text-xs text-gray-400 mb-1' }, '提交时间'),
+              h('p', { className: 'text-gray-600 text-sm' }, formatDate(booking.created_at))
+            )
+          ),
+          h('div', { className: 'p-6 border-t border-gray-100 space-y-3' },
+            h('p', { className: 'text-xs text-gray-400 font-medium' }, '修改状态'),
+            h('div', { className: 'flex flex-wrap gap-2' },
+              ['pending', 'confirmed', 'completed', 'cancelled'].map(function(status) {
+                var info = STATUS_MAP[status];
+                return h('button', { key: status, onClick: function() { onUpdateStatus(booking.id, status); },
+                  className: 'px-3 py-1.5 rounded-lg text-xs font-medium transition-all ' +
+                    (booking.status === status ? info.color + ' ring-2 ring-offset-1 ring-primary-300' : 'bg-gray-50 text-gray-500 hover:bg-gray-100') },
+                  info.label);
+              })
+            ),
+            h('div', { className: 'flex flex-wrap gap-2 pt-2' },
+              ['unpaid', 'submitted', 'paid'].map(function(status) {
+                var info = PAYMENT_MAP[status];
+                return h('button', { key: status, onClick: function() { onUpdateStatus(booking.id, null, status); },
+                  className: 'px-3 py-1.5 rounded-lg text-xs font-medium transition-all ' +
+                    (booking.payment_status === status ? info.color + ' ring-2 ring-offset-1 ring-primary-300' : 'bg-gray-50 text-gray-500 hover:bg-gray-100') },
+                  info.label);
+              })
+            )
+          )
+        )
+      );
+    }
+
+    // ─── 导师编辑弹窗 ───
+    function TutorEditModal(props) {
+      var tutor = props.tutor;
+      var onClose = props.onClose;
+      var onSave = props.onSave;
+      var isNew = props.isNew;
+
+      var formState = useState(tutor || { name: '', subject: '数学', avatar: '👨‍🏫', hourly_rate: 150, intro: '', tags: [], status: 'active' });
+      var form = formState[0];
+      var setForm = formState[1];
+
+      if (!tutor && !isNew) return null;
+
+      var handleChange = function(field, value) {
+        setForm(function(prev) {
+          var next = Object.assign({}, prev);
+          next[field] = value;
+          return next;
+        });
+      };
+
+      var handleSave = function() {
+        if (!form.name.trim()) { alert('请输入导师姓名'); return; }
+        onSave(form);
+      };
+
+      return h('div', { className: 'fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: onClose },
+        h('div', { className: 'bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden max-h-[90vh] overflow-y-auto', onClick: function(e) { e.stopPropagation(); } },
+          h('div', { className: 'p-6 border-b border-gray-100 flex items-center justify-between' },
+            h('h3', { className: 'text-lg font-bold text-gray-900' }, isNew ? '添加导师' : '编辑导师'),
+            h('button', { onClick: onClose, className: 'text-gray-400 hover:text-gray-600 text-xl' }, '✕')
+          ),
+          h('div', { className: 'p-6 space-y-4' },
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, '姓名'),
+              h('input', { type: 'text', value: form.name, onChange: function(e) { handleChange('name', e.target.value); },
+                className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100' })
+            ),
+            h('div', { className: 'grid grid-cols-2 gap-4' },
+              h('div', null,
+                h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, '科目'),
+                h('select', { value: form.subject, onChange: function(e) { handleChange('subject', e.target.value); },
+                  className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 bg-white' },
+                  h('option', null, '数学'), h('option', null, '英语'), h('option', null, '物理')
+                )
+              ),
+              h('div', null,
+                h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, '头像 Emoji'),
+                h('input', { type: 'text', value: form.avatar, onChange: function(e) { handleChange('avatar', e.target.value); },
+                  className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 text-center text-2xl' })
+              )
+            ),
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, '时薪（元）'),
+              h('input', { type: 'number', value: form.hourly_rate, onChange: function(e) { handleChange('hourly_rate', parseInt(e.target.value) || 0); },
+                className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500' })
+            ),
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, '简介'),
+              h('textarea', { value: form.intro, onChange: function(e) { handleChange('intro', e.target.value); }, rows: '3',
+                className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 resize-none' })
+            ),
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, '标签（逗号分隔）'),
+              h('input', { type: 'text', value: (form.tags || []).join('，'), onChange: function(e) { handleChange('tags', e.target.value.split(/[，,]/).map(function(s) { return s.trim(); }).filter(Boolean)); },
+                className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500' })
+            ),
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, '状态'),
+              h('select', { value: form.status, onChange: function(e) { handleChange('status', e.target.value); },
+                className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 bg-white' },
+                h('option', { value: 'active' }, '在职'),
+                h('option', { value: 'inactive' }, '离职')
+              )
+            )
+          ),
+          h('div', { className: 'p-6 border-t border-gray-100 flex gap-3' },
+            h('button', { onClick: onClose, className: 'flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl font-medium hover:bg-gray-50 transition-colors' }, '取消'),
+            h('button', { onClick: handleSave, className: 'flex-1 py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors' }, '保存')
+          )
+        )
+      );
+    }
+
+    // ─── 主面板 ───
+    function Dashboard(props) {
+      var user = props.user;
+      var onLogout = props.onLogout;
+
+      var tabState = useState('bookings');
+      var activeTab = tabState[0];
+      var setActiveTab = tabState[1];
+
+      var bookingsState = useState([]);
+      var bookings = bookingsState[0];
+      var setBookings = bookingsState[1];
+
+      var tutorsState = useState([]);
+      var tutors = tutorsState[0];
+      var setTutors = tutorsState[1];
+
+      var selectedBookingState = useState(null);
+      var selectedBooking = selectedBookingState[0];
+      var setSelectedBooking = selectedBookingState[1];
+
+      var editingTutorState = useState(null);
+      var editingTutor = editingTutorState[0];
+      var setEditingTutor = editingTutorState[1];
+
+      var isNewTutorState = useState(false);
+      var isNewTutor = isNewTutorState[0];
+      var setIsNewTutor = isNewTutorState[1];
+
+      // 加载数据
+      var loadData = async function() {
+        var bookingsResult = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
+        if (bookingsResult.data) setBookings(bookingsResult.data);
+
+        var tutorsResult = await supabase.from('tutors').select('*').order('created_at', { ascending: false });
+        if (tutorsResult.data) setTutors(tutorsResult.data);
+      };
+
+      useEffect(function() { loadData(); }, []);
+
+      // 更新预约状态
+      var handleUpdateBookingStatus = async function(bookingId, status, paymentStatus) {
+        var update = {};
+        if (status) update.status = status;
+        if (paymentStatus) update.payment_status = paymentStatus;
+
+        var result = await supabase.from('bookings').update(update).eq('id', bookingId);
+        if (result.error) {
+          alert('更新失败：' + result.error.message);
+        } else {
+          loadData();
+          setSelectedBooking(null);
+        }
+      };
+
+      // 保存导师
+      var handleSaveTutor = async function(tutorData) {
+        if (isNewTutor) {
+          var insertData = Object.assign({}, tutorData);
+          delete insertData.id;
+          delete insertData.created_at;
+          var result = await supabase.from('tutors').insert(insertData);
+          if (result.error) {
+            alert('添加失败：' + result.error.message);
+            return;
+          }
+        } else {
+          var updateData = Object.assign({}, tutorData);
+          delete updateData.created_at;
+          var result2 = await supabase.from('tutors').update(updateData).eq('id', tutorData.id);
+          if (result2.error) {
+            alert('更新失败：' + result2.error.message);
+            return;
+          }
+        }
+        setEditingTutor(null);
+        setIsNewTutor(false);
+        loadData();
+      };
+
+      // 删除导师
+      var handleDeleteTutor = async function(tutorId) {
+        if (!confirm('确定要删除这位导师吗？')) return;
+        var result = await supabase.from('tutors').delete().eq('id', tutorId);
+        if (result.error) {
+          alert('删除失败：' + result.error.message);
+        } else {
+          loadData();
+        }
+      };
+
+      // 统计数据
+      var pendingCount = bookings.filter(function(b) { return b.status === 'pending'; }).length;
+      var todayBookings = bookings.filter(function(b) {
+        var d = new Date(b.created_at);
+        var today = new Date();
+        return d.toDateString() === today.toDateString();
+      }).length;
+      var unpaidCount = bookings.filter(function(b) { return b.payment_status === 'unpaid' || b.payment_status === 'submitted'; }).length;
+
+      return h('div', { className: 'min-h-screen bg-gray-50' },
+        // 顶部导航
+        h('header', { className: 'bg-white border-b border-gray-200 sticky top-0 z-30' },
+          h('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8' },
+            h('div', { className: 'flex items-center justify-between h-16' },
+              h('div', { className: 'flex items-center gap-3' },
+                h('div', { className: 'w-8 h-8 rounded-lg bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center' },
+                  h('span', { className: 'text-white font-bold text-sm' }, '优')
+                ),
+                h('span', { className: 'font-bold text-gray-900' }, '优学帮管理后台')
+              ),
+              h('div', { className: 'flex items-center gap-4' },
+                h('span', { className: 'text-sm text-gray-500 hidden sm:block' }, user.email),
+                h('button', { onClick: onLogout, className: 'text-sm text-gray-500 hover:text-red-500 transition-colors' }, '退出')
+              )
+            )
+          )
+        ),
+
+        h('div', { className: 'max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6' },
+          // 统计卡片
+          h('div', { className: 'grid grid-cols-2 md:grid-cols-4 gap-4 mb-6' },
+            h('div', { className: 'bg-white rounded-xl p-5 border border-gray-100' },
+              h('p', { className: 'text-xs text-gray-400 mb-1' }, '总预约数'),
+              h('p', { className: 'text-2xl font-bold text-gray-900' }, bookings.length)
+            ),
+            h('div', { className: 'bg-white rounded-xl p-5 border border-gray-100' },
+              h('p', { className: 'text-xs text-gray-400 mb-1' }, '今日新增'),
+              h('p', { className: 'text-2xl font-bold text-blue-600' }, todayBookings)
+            ),
+            h('div', { className: 'bg-white rounded-xl p-5 border border-gray-100' },
+              h('p', { className: 'text-xs text-gray-400 mb-1' }, '待处理'),
+              h('p', { className: 'text-2xl font-bold text-yellow-600' }, pendingCount)
+            ),
+            h('div', { className: 'bg-white rounded-xl p-5 border border-gray-100' },
+              h('p', { className: 'text-xs text-gray-400 mb-1' }, '待处理支付'),
+              h('p', { className: 'text-2xl font-bold text-red-500' }, unpaidCount)
+            )
+          ),
+
+          // Tab 切换
+          h('div', { className: 'flex gap-1 bg-gray-100 rounded-xl p-1 mb-6 w-fit' },
+            h('button', { onClick: function() { setActiveTab('bookings'); },
+              className: 'px-5 py-2 rounded-lg text-sm font-medium transition-all ' + (activeTab === 'bookings' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700') },
+              '预约管理 (' + bookings.length + ')'),
+            h('button', { onClick: function() { setActiveTab('tutors'); },
+              className: 'px-5 py-2 rounded-lg text-sm font-medium transition-all ' + (activeTab === 'tutors' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700') },
+              '导师管理 (' + tutors.length + ')')
+          ),
+
+          // 预约列表
+          activeTab === 'bookings' ? h('div', { className: 'bg-white rounded-xl border border-gray-100 overflow-hidden' },
+            bookings.length === 0 ? h('div', { className: 'text-center py-16 text-gray-400' },
+              h('p', { className: 'text-lg mb-2' }, '暂无预约'),
+              h('p', { className: 'text-sm' }, '学生提交预约后会在这里显示')
+            ) : h('div', { className: 'overflow-x-auto' },
+              h('table', { className: 'w-full' },
+                h('thead', null,
+                  h('tr', { className: 'border-b border-gray-100' },
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase' }, '学生'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase hidden sm:table-cell' }, '年级'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase hidden md:table-cell' }, '导师'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase' }, '状态'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase hidden sm:table-cell' }, '支付'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase' }, '时间'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase' }, '操作')
+                  )
+                ),
+                h('tbody', null,
+                  bookings.map(function(booking) {
+                    var tutor = tutors.find(function(t) { return t.id === booking.tutor_id; });
+                    var statusInfo = STATUS_MAP[booking.status] || STATUS_MAP.pending;
+                    var paymentInfo = PAYMENT_MAP[booking.payment_status] || PAYMENT_MAP.unpaid;
+                    return h('tr', { key: booking.id, className: 'border-b border-gray-50 hover:bg-gray-50 transition-colors' },
+                      h('td', { className: 'px-4 py-3' },
+                        h('p', { className: 'font-medium text-gray-900 text-sm' }, booking.student_name),
+                        h('p', { className: 'text-xs text-gray-400' }, booking.phone)
+                      ),
+                      h('td', { className: 'px-4 py-3 text-sm text-gray-600 hidden sm:table-cell' }, booking.grade),
+                      h('td', { className: 'px-4 py-3 text-sm text-gray-600 hidden md:table-cell' }, tutor ? tutor.name : '未指定'),
+                      h('td', { className: 'px-4 py-3' },
+                        h('span', { className: 'inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ' + statusInfo.color }, statusInfo.label)
+                      ),
+                      h('td', { className: 'px-4 py-3 hidden sm:table-cell' },
+                        h('span', { className: 'inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ' + paymentInfo.color }, paymentInfo.label)
+                      ),
+                      h('td', { className: 'px-4 py-3 text-xs text-gray-400' }, formatDate(booking.created_at)),
+                      h('td', { className: 'px-4 py-3' },
+                        h('button', { onClick: function() { setSelectedBooking(booking); },
+                          className: 'text-primary-600 hover:text-primary-700 text-sm font-medium' }, '查看')
+                      )
+                    );
+                  })
+                )
+              )
+            )
+          ) : null,
+
+          // 导师列表
+          activeTab === 'tutors' ? h('div', null,
+            h('div', { className: 'flex justify-end mb-4' },
+              h('button', { onClick: function() { setEditingTutor({ name: '', subject: '数学', avatar: '👨‍🏫', hourly_rate: 150, intro: '', tags: [], status: 'active' }); setIsNewTutor(true); },
+                className: 'px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-semibold hover:bg-primary-700 transition-colors' },
+                '+ 添加导师')
+            ),
+            h('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' },
+              tutors.map(function(tutor) {
+                return h('div', { key: tutor.id, className: 'bg-white rounded-xl border border-gray-100 p-5' },
+                  h('div', { className: 'flex items-start justify-between mb-3' },
+                    h('div', { className: 'flex items-center gap-3' },
+                      h('div', { className: 'w-12 h-12 rounded-xl bg-gradient-to-br from-primary-50 to-primary-100 flex items-center justify-center text-xl' }, tutor.avatar || '👨‍🏫'),
+                      h('div', null,
+                        h('p', { className: 'font-bold text-gray-900' }, tutor.name),
+                        h('p', { className: 'text-xs text-gray-400' }, tutor.subject + ' · ¥' + tutor.hourly_rate + '/时')
+                      )
+                    ),
+                    h('span', { className: 'text-xs px-2 py-0.5 rounded-full ' + (tutor.status === 'active' ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500') },
+                      tutor.status === 'active' ? '在职' : '离职')
+                  ),
+                  h('p', { className: 'text-sm text-gray-500 mb-3 line-clamp-2' }, tutor.intro),
+                  h('div', { className: 'flex gap-2' },
+                    h('button', { onClick: function() { setEditingTutor(Object.assign({}, tutor)); setIsNewTutor(false); },
+                      className: 'flex-1 py-2 text-sm text-primary-600 border border-primary-200 rounded-lg hover:bg-primary-50 transition-colors' }, '编辑'),
+                    h('button', { onClick: function() { handleDeleteTutor(tutor.id); },
+                      className: 'py-2 px-3 text-sm text-red-500 border border-red-200 rounded-lg hover:bg-red-50 transition-colors' }, '删除')
+                  )
+                );
+              })
+            )
+          ) : null
+        ),
+
+        // 预约详情弹窗
+        selectedBooking ? h(BookingDetailModal, { booking: selectedBooking, onClose: function() { setSelectedBooking(null); }, onUpdateStatus: handleUpdateBookingStatus, tutors: tutors }) : null,
+
+        // 导师编辑弹窗
+        editingTutor ? h(TutorEditModal, { tutor: editingTutor, isNew: isNewTutor, onClose: function() { setEditingTutor(null); setIsNewTutor(false); }, onSave: handleSaveTutor }) : null
+      );
+    }
+
+    // ─── App ───
+    function App() {
+      var userState = useState(null);
+      var user = userState[0];
+      var setUser = userState[1];
+
+      var checkingState = useState(true);
+      var checking = checkingState[0];
+      var setChecking = checkingState[1];
+
+      // 检查登录状态
+      useEffect(function() {
+        async function checkSession() {
+          try {
+            var result = await supabase.auth.getSession();
+            if (result.data && result.data.session) {
+              setUser(result.data.session.user);
+            }
+          } catch (err) {
+            // 未登录或网络错误，正常显示登录页
+            console.log('未检测到登录状态');
+          }
+          setChecking(false);
+        }
+        checkSession();
+      }, []);
+
+      var handleLogout = async function() {
+        await supabase.auth.signOut();
+        setUser(null);
+      };
+
+      if (checking) {
+        return h('div', { className: 'min-h-screen flex items-center justify-center' },
+          h('div', { className: 'text-gray-400' }, '加载中...')
+        );
+      }
+
+      if (!user) {
+        return h(LoginPage, { onLogin: setUser });
+      }
+
+      return h(Dashboard, { user: user, onLogout: handleLogout });
+    }
+
+    var root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(h(App));
+  </script>
+</body>
+</html>
