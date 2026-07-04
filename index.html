@@ -189,6 +189,10 @@
           alert('预约信息丢失，请刷新页面重试');
           return;
         }
+        if (!screenshotUrl) {
+          alert('请先上传支付截图');
+          return;
+        }
         setSubmitting(true);
         try {
           var updateData = { payment_status: 'submitted' };
@@ -262,7 +266,7 @@
 
               // ─── 上传支付截图 ───
               h('div', { className: 'mt-3 pt-3 border-t border-gray-200' },
-                h('p', { className: 'text-xs text-gray-500 mb-2' }, '📸 上传支付截图，方便管理员核对'),
+                h('p', { className: 'text-xs text-gray-500 mb-2' }, '📸 请上传支付截图（必填）'),
 
                 // 文件选择按钮
                 h('label', { className: 'inline-block px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors' },
@@ -286,9 +290,10 @@
             // ─── 确认支付按钮 ───
             h('button', {
               onClick: handlePaymentConfirm,
-              disabled: submitting,
-              className: 'w-full py-3 mb-2 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors disabled:opacity-50'
-            }, submitting ? '提交中...' : '✅ 我已完成支付，通知后台'),
+              disabled: submitting || !screenshotUrl,
+              title: !screenshotUrl ? '请先上传支付截图' : '',
+              className: 'w-full py-3 mb-2 rounded-xl font-semibold transition-colors disabled:opacity-50 ' + (screenshotUrl ? 'bg-green-500 text-white hover:bg-green-600' : 'bg-gray-300 text-gray-500 cursor-not-allowed')
+            }, submitting ? '提交中...' : screenshotUrl ? '✅ 我已完成支付，通知后台' : '请先上传支付截图'),
             h('button', { onClick: handleClose, className: 'w-full py-2.5 text-sm text-gray-400 hover:text-gray-600 transition-colors' }, '稍后支付')
           )
         )
