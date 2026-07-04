@@ -883,32 +883,22 @@
 
       useEffect(function() {
         async function loadTutors() {
-          var result = await supabase
-            .from('tutors')
-            .select('*')
-            .eq('status', 'active')
-            .order('rating', { ascending: false });
+          try {
+            var result = await supabase
+              .from('tutors')
+              .select('*')
+              .eq('status', 'active')
+              .order('rating', { ascending: false });
 
-          if (result.data) {
-            setTutors(result.data);
+            if (result.data) {
+              setTutors(result.data);
+            }
+          } catch (err) {
+            console.log('加载导师数据失败:', err);
           }
           setLoading(false);
         }
-
-        async function checkSession() {
-          try {
-            var result = await supabase.auth.getSession();
-            if (result.data && result.data.session) {
-              setUser(result.data.session.user);
-            }
-          } catch (err) {
-            // 未登录
-          }
-          setAuthChecking(false);
-        }
-
         loadTutors();
-        checkSession();
       }, []);
 
       var handleBook = function(tutor) {
@@ -940,9 +930,7 @@
         h(FeaturesSection),
         h(Footer),
         h(BookingModal, { isOpen: modalOpen, onClose: function() { setModalOpen(false); }, tutor: selectedTutor, onBookingSuccess: handleBookingSuccess }),
-        h(PaymentModal, { isOpen: paymentOpen, onClose: function() { setPaymentOpen(false); }, bookingInfo: bookingInfo }),
-        h(CustomerAuthModal, { isOpen: authModalOpen, onClose: function() { setAuthModalOpen(false); }, onLogin: setUser }),
-        h(MyBookingsModal, { isOpen: bookingsModalOpen, onClose: function() { setBookingsModalOpen(false); }, user: user })
+        h(PaymentModal, { isOpen: paymentOpen, onClose: function() { setPaymentOpen(false); }, bookingInfo: bookingInfo })
       );
     }
 
