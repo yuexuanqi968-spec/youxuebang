@@ -668,6 +668,7 @@
     function TutorCard(props) {
       var tutor = props.tutor;
       var onBook = props.onBook;
+      var user = props.user;
       return h('div', { className: 'fade-in bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-xl hover:shadow-primary-100/50 transition-all duration-300 hover:-translate-y-1 group' },
         h('div', { className: 'p-6' },
           h('div', { className: 'flex items-start justify-between mb-4' },
@@ -695,7 +696,10 @@
               h('span', null, (tutor.students_count || 0) + '名学员')
             ),
             h('button', { onClick: function() { onBook(tutor); },
-              className: 'px-6 py-3 bg-accent-500 text-white text-sm font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200 active:scale-[0.97] min-h-[44px]' }, '预约试听')
+              className: 'px-6 py-3 text-sm font-semibold rounded-xl transition-all hover:shadow-lg active:scale-[0.97] min-h-[44px] ' +
+                (user ? 'bg-accent-500 text-white hover:bg-accent-600 hover:shadow-accent-200' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'),
+              title: user ? '预约试听' : '请先登录'
+            }, user ? '预约试听' : '登录后预约')
           )
         )
       );
@@ -885,6 +889,7 @@
     function HeroSection(props) {
       var onBookClick = props.onBookClick;
       var onSearch = props.onSearch;
+      var user = props.user;
       var searchState = useState('');
       var searchText = searchState[0];
       var setSearchText = searchState[1];
@@ -957,10 +962,10 @@
               h('div', { className: 'flex-1 relative' },
                 h('div', { className: 'absolute left-4 top-1/2 -translate-y-1/2 text-gray-400' }, h(SearchIcon)),
                 h('input', { type: 'text', value: searchText, onChange: function(e) { setSearchText(e.target.value); }, onKeyDown: handleKeyDown,
-                  placeholder: '输入科目如"数学""物理""英语""理科"...',
+                  placeholder: user ? '输入科目如"数学""物理""英语""理科"...' : '请先登录后再搜索导师',
                   className: 'w-full pl-12 pr-4 py-4 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all text-gray-700 shadow-sm' })
               ),
-              h('button', { onClick: handleSearch, className: 'px-8 py-4 bg-accent-500 text-white font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-xl hover:shadow-accent-200 active:scale-[0.98] whitespace-nowrap' }, '立即搜索')
+              h('button', { onClick: handleSearch, className: 'px-8 py-4 bg-accent-500 text-white font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-xl hover:shadow-accent-200 active:scale-[0.98] whitespace-nowrap' }, user ? '立即搜索' : '登录后搜索')
             ),
             h('div', { className: 'flex flex-wrap justify-center gap-3 mt-6' },
               quickTags.map(function(tag) {
@@ -994,6 +999,7 @@
       var tutors = props.tutors;
       var loading = props.loading;
       var searchSubject = props.searchSubject;
+      var user = props.user;
 
       var activeState = useState(searchSubject || '全部');
       var activeSubject = activeState[0];
@@ -1065,7 +1071,7 @@
             h('p', { className: 'text-sm mt-2' }, '试试调整筛选条件或搜索其他关键词')
           ) : h('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' },
             filtered.map(function(tutor) {
-              return h(TutorCard, { key: tutor.id, tutor: tutor, onBook: onBookClick });
+              return h(TutorCard, { key: tutor.id, tutor: tutor, onBook: onBookClick, user: user });
             })
           )
         )
@@ -1241,6 +1247,7 @@
       var setSearchSubject = searchSubjectState[1];
 
       var handleBook = function(tutor) {
+        if (!user) { setAuthModalOpen(true); return; }
         setSelectedTutor(tutor || null);
         setModalOpen(true);
       };
@@ -1251,6 +1258,7 @@
       };
 
       var handleSearch = function(subject) {
+        if (!user) { setAuthModalOpen(true); return; }
         setSearchSubject(subject);
       };
 
@@ -1267,8 +1275,8 @@
           onMyBookingsClick: function() { setBookingsModalOpen(true); },
           onLogout: handleLogout
         }),
-        h(HeroSection, { onBookClick: function() { handleBook(null); }, onSearch: handleSearch }),
-        h(FilterSection, { onBookClick: handleBook, tutors: tutors, loading: loading, searchSubject: searchSubject }),
+        h(HeroSection, { onBookClick: function() { handleBook(null); }, onSearch: handleSearch, user: user }),
+        h(FilterSection, { onBookClick: handleBook, tutors: tutors, loading: loading, searchSubject: searchSubject, user: user }),
         h(StatsSection),
         h(FeaturesSection),
         h(Footer),
