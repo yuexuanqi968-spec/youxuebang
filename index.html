@@ -635,7 +635,7 @@
                       h('button', { onClick: function() { onLogout(); setUserMenuOpen(false); }, className: 'w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors' }, '退出登录')
                     ) : null
                   )
-                : h('button', { onClick: onLoginClick, className: 'text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors' }, '登录'),
+                : h('button', { onClick: function() { alert('点击了登录按钮'); onLoginClick(); }, className: 'text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors' }, '登录'),
               h('button', { onClick: onBookClick, className: 'px-5 py-2.5 bg-accent-500 text-white text-sm font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200' }, '免费试听')
             ),
             h('button', { className: 'md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors', onClick: function() { setMenuOpen(!menuOpen); } },
