@@ -635,7 +635,7 @@
                       h('button', { onClick: function() { onLogout(); setUserMenuOpen(false); }, className: 'w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors' }, '退出登录')
                     ) : null
                   )
-                : h('button', { onClick: onBookClick, className: 'text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors' }, '登录（测试）'),
+                : h('button', { onClick: onLoginClick, className: 'px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer' }, '登录'),
               h('button', { onClick: onBookClick, className: 'px-5 py-2.5 bg-accent-500 text-white text-sm font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200' }, '免费试听')
             ),
             h('button', { className: 'md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors', onClick: function() { setMenuOpen(!menuOpen); } },
@@ -655,7 +655,7 @@
                     h('button', { onClick: function() { onMyBookingsClick(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-gray-700 font-medium hover:bg-gray-50 rounded-xl' }, '📋 我的预约'),
                     h('button', { onClick: function() { onLogout(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-red-500 font-medium hover:bg-red-50 rounded-xl' }, '退出登录')
                   )
-                : h('button', { onClick: function() { alert('点击了移动端登录'); onLoginClick(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-gray-700 font-medium' }, '登录'),
+                : h('button', { onClick: function() { onLoginClick(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-gray-700 font-medium hover:bg-gray-50 rounded-xl cursor-pointer' }, '登录'),
               h('button', { onClick: function() { onBookClick(); setMenuOpen(false); }, className: 'w-full py-3 bg-accent-500 text-white rounded-xl font-semibold' }, '免费试听')
             )
           )
@@ -898,7 +898,20 @@
           }
           setLoading(false);
         }
+
+        async function checkSession() {
+          try {
+            var result = await supabase.auth.getSession();
+            if (result.data && result.data.session) {
+              setUser(result.data.session.user);
+            }
+          } catch (err) {
+            // 未登录
+          }
+        }
+
         loadTutors();
+        checkSession();
       }, []);
 
       var handleBook = function(tutor) {
@@ -930,7 +943,9 @@
         h(FeaturesSection),
         h(Footer),
         h(BookingModal, { isOpen: modalOpen, onClose: function() { setModalOpen(false); }, tutor: selectedTutor, onBookingSuccess: handleBookingSuccess }),
-        h(PaymentModal, { isOpen: paymentOpen, onClose: function() { setPaymentOpen(false); }, bookingInfo: bookingInfo })
+        h(PaymentModal, { isOpen: paymentOpen, onClose: function() { setPaymentOpen(false); }, bookingInfo: bookingInfo }),
+        h(CustomerAuthModal, { isOpen: authModalOpen, onClose: function() { setAuthModalOpen(false); }, onLogin: setUser }),
+        h(MyBookingsModal, { isOpen: bookingsModalOpen, onClose: function() { setBookingsModalOpen(false); }, user: user })
       );
     }
 
