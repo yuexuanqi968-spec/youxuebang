@@ -832,15 +832,22 @@
             ),
             h('div', { className: 'hidden md:flex items-center gap-3' },
               user
-                ? h('div', { className: 'relative' },
-                    h('button', { onClick: function() { setUserMenuOpen(!userMenuOpen); }, className: 'flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors bg-gray-50 px-3 py-2 rounded-xl' },
-                      h('span', { className: 'w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center text-xs' }, '👤'),
-                      h('span', null, user.email.split('@')[0])
+                ? h('div', { className: 'flex items-center gap-3' },
+                    // 我的预约 - 独立醒目按钮
+                    h('button', { onClick: function() { onMyBookingsClick(); }, className: 'flex items-center gap-1.5 px-4 py-2 bg-primary-50 text-primary-700 text-sm font-semibold rounded-xl hover:bg-primary-100 transition-colors border border-primary-200' },
+                      h('span', null, '📋'),
+                      h('span', null, '我的预约')
                     ),
-                    userMenuOpen ? h('div', { className: 'absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[140px]' },
-                      h('button', { onClick: function() { onMyBookingsClick(); setUserMenuOpen(false); }, className: 'w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors' }, '📋 我的预约'),
-                      h('button', { onClick: function() { onLogout(); setUserMenuOpen(false); }, className: 'w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors' }, '退出登录')
-                    ) : null
+                    // 用户头像 + 退出
+                    h('div', { className: 'relative' },
+                      h('button', { onClick: function() { setUserMenuOpen(!userMenuOpen); }, className: 'flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors bg-gray-50 px-3 py-2 rounded-xl' },
+                        h('span', { className: 'w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center text-xs' }, '👤'),
+                        h('span', null, user.email.split('@')[0])
+                      ),
+                      userMenuOpen ? h('div', { className: 'absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[140px]' },
+                        h('button', { onClick: function() { onLogout(); setUserMenuOpen(false); }, className: 'w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors' }, '退出登录')
+                      ) : null
+                    )
                   )
                 : h('button', { onClick: openAuth, className: 'px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer' }, '登录'),
               h('button', { onClick: onBookClick, className: 'px-5 py-2.5 bg-accent-500 text-white text-sm font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200' }, '免费试听')
@@ -857,10 +864,12 @@
             }),
             h('div', { className: 'pt-3 border-t border-gray-100 mt-2 space-y-2' },
               user
-                ? h('div', null,
-                    h('p', { className: 'px-4 py-2 text-sm text-gray-500' }, '👤 ' + user.email),
-                    h('button', { onClick: function() { onMyBookingsClick(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-gray-700 font-medium hover:bg-gray-50 rounded-xl' }, '📋 我的预约'),
-                    h('button', { onClick: function() { onLogout(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-red-500 font-medium hover:bg-red-50 rounded-xl' }, '退出登录')
+                ? h('div', { className: 'space-y-2' },
+                    h('button', { onClick: function() { onMyBookingsClick(); setMenuOpen(false); }, className: 'w-full py-3 bg-primary-50 text-primary-700 font-semibold rounded-xl border border-primary-200 hover:bg-primary-100 transition-colors' }, '📋 我的预约'),
+                    h('div', { className: 'flex items-center justify-between px-2' },
+                      h('p', { className: 'text-sm text-gray-500' }, '👤 ' + user.email),
+                      h('button', { onClick: function() { onLogout(); setMenuOpen(false); }, className: 'text-sm text-red-500 font-medium hover:text-red-600' }, '退出')
+                    )
                   )
                 : h('button', { onClick: function() { openAuth(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-gray-700 font-medium hover:bg-gray-50 rounded-xl cursor-pointer' }, '登录'),
               h('button', { onClick: function() { onBookClick(); setMenuOpen(false); }, className: 'w-full py-3 bg-accent-500 text-white rounded-xl font-semibold' }, '免费试听')
