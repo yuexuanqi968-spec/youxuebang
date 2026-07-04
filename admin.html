@@ -216,6 +216,11 @@
                 h('span', { className: 'inline-block px-3 py-1 rounded-full text-xs font-medium ' + paymentInfo.color }, paymentInfo.label)
               )
             ),
+            booking.payment_screenshot_url ? h('div', null,
+              h('p', { className: 'text-xs text-gray-400 mb-2' }, '支付截图'),
+              h('img', { src: booking.payment_screenshot_url, alt: '支付截图', className: 'w-full max-h-48 rounded-lg object-contain border border-gray-200 cursor-pointer', onClick: function() { window.open(booking.payment_screenshot_url, '_blank'); } }),
+              h('p', { className: 'text-xs text-gray-400 mt-1' }, '点击图片查看原图')
+            ) : null,
             h('div', null,
               h('p', { className: 'text-xs text-gray-400 mb-1' }, '提交时间'),
               h('p', { className: 'text-gray-600 text-sm' }, formatDate(booking.created_at))

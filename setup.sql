@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   tutor_id UUID REFERENCES tutors(id),
   status TEXT DEFAULT 'pending',
   payment_status TEXT DEFAULT 'unpaid',
+  payment_screenshot_url TEXT,
   created_at TIMESTAMPTZ DEFAULT now()
 );
 

@@ -104,7 +104,85 @@
       var submitting = submittingState[0];
       var setSubmitting = submittingState[1];
 
+      // 截图上传相关状态
+      var screenshotUrlState = useState(null);
+      var screenshotUrl = screenshotUrlState[0];
+      var setScreenshotUrl = screenshotUrlState[1];
+
+      var uploadingState = useState(false);
+      var uploading = uploadingState[0];
+      var setUploading = uploadingState[1];
+
+      var uploadErrorState = useState('');
+      var uploadError = uploadErrorState[0];
+      var setUploadError = uploadErrorState[1];
+
       if (!isOpen) return null;
+
+      // 处理文件选择和上传
+      var handleFileChange = async function(e) {
+        var file = e.target.files[0];
+        if (!file) return;
+
+        // 校验文件类型
+        if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+          setUploadError('仅支持 JPG、PNG、WebP 格式的图片');
+          return;
+        }
+
+        // 校验文件大小（5MB）
+        if (file.size > 5 * 1024 * 1024) {
+          setUploadError('图片大小不能超过 5MB');
+          return;
+        }
+
+        setUploadError('');
+        setUploading(true);
+
+        try {
+          // 生成带时间戳的文件名防止重名
+          var timestamp = Date.now();
+          var ext = file.name.split('.').pop();
+          var fileName = 'proof_' + timestamp + '.' + ext;
+
+          // 上传到 Supabase Storage
+          var uploadResult = await supabase.storage
+            .from('payment-proofs')
+            .upload(fileName, file, {
+              cacheControl: '3600',
+              upsert: false
+            });
+
+          if (uploadResult.error) {
+            // 桶不存在时给明确提示
+            if (uploadResult.error.message && uploadResult.error.message.indexOf('not found') !== -1) {
+              setUploadError('存储服务未配置，请联系管理员在 Supabase 创建 payment-proofs 存储桶');
+            } else {
+              setUploadError('上传失败：' + uploadResult.error.message);
+            }
+            setUploading(false);
+            return;
+          }
+
+          // 获取公开访问 URL
+          var urlResult = supabase.storage
+            .from('payment-proofs')
+            .getPublicUrl(fileName);
+
+          if (urlResult.data && urlResult.data.publicUrl) {
+            setScreenshotUrl(urlResult.data.publicUrl);
+          } else {
+            setUploadError('获取图片地址失败，请重试');
+            setUploading(false);
+            return;
+          }
+
+          setUploading(false);
+        } catch (err) {
+          setUploadError('上传失败，请检查网络后重试');
+          setUploading(false);
+        }
+      };
 
       var handlePaymentConfirm = async function() {
         if (!bookingId) {
@@ -113,9 +191,15 @@
         }
         setSubmitting(true);
         try {
+          var updateData = { payment_status: 'submitted' };
+          // 如果有截图，一起提交
+          if (screenshotUrl) {
+            updateData.payment_screenshot_url = screenshotUrl;
+          }
+
           var result = await supabase
             .from('bookings')
-            .update({ payment_status: 'submitted' })
+            .update(updateData)
             .eq('id', bookingId);
 
           if (result.error) {
@@ -133,6 +217,8 @@
 
       var handleClose = function() {
         setSubmitted(false);
+        setScreenshotUrl(null);
+        setUploadError('');
         onClose();
       };
 
@@ -166,13 +252,38 @@
                 ? '已为您预约 ' + bookingInfo.tutorName + ' 老师的试听课'
                 : '已成功提交预约信息'
             ),
+            // 支付码区域
             h('div', { className: 'bg-gray-50 rounded-xl p-4 mb-4' },
               h('p', { className: 'text-sm text-gray-600 mb-2 font-medium' }, '扫码支付试听费用'),
               h('div', { className: 'w-48 h-48 mx-auto bg-white rounded-lg flex items-center justify-center overflow-hidden border-2 border-gray-200' },
                 h('img', { src: 'qrcode.jpg', alt: '微信收款码', className: 'w-full h-full object-contain' })
               ),
-              h('p', { className: 'text-xs text-gray-400 mt-2' }, '请使用微信扫描上方二维码完成支付')
+              h('p', { className: 'text-xs text-gray-400 mt-2' }, '请使用微信扫描上方二维码完成支付'),
+
+              // ─── 上传支付截图 ───
+              h('div', { className: 'mt-3 pt-3 border-t border-gray-200' },
+                h('p', { className: 'text-xs text-gray-500 mb-2' }, '📸 上传支付截图，方便管理员核对'),
+
+                // 文件选择按钮
+                h('label', { className: 'inline-block px-4 py-2 bg-white border border-gray-300 rounded-lg text-xs text-gray-600 cursor-pointer hover:bg-gray-50 transition-colors' },
+                  uploading ? '上传中...' : screenshotUrl ? '📎 重新选择' : '📎 选择截图',
+                  h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp', onChange: handleFileChange,
+                    className: 'hidden',
+                    disabled: uploading
+                  })
+                ),
+
+                // 上传错误提示
+                uploadError ? h('p', { className: 'text-red-500 text-xs mt-1' }, uploadError) : null,
+
+                // 上传成功预览
+                screenshotUrl ? h('div', { className: 'mt-2' },
+                  h('img', { src: screenshotUrl, alt: '支付截图', className: 'w-24 h-24 mx-auto rounded-lg object-cover border border-gray-200' }),
+                  h('p', { className: 'text-green-600 text-xs mt-1' }, '✅ 截图已上传')
+                ) : null
+              )
             ),
+            // ─── 确认支付按钮 ───
             h('button', {
               onClick: handlePaymentConfirm,
               disabled: submitting,
