@@ -184,6 +184,234 @@
       );
     }
 
+    // ─── 顾客登录/注册弹窗 ───
+    function CustomerAuthModal(props) {
+      var isOpen = props.isOpen;
+      var onClose = props.onClose;
+      var onLogin = props.onLogin;
+
+      var emailState = useState('');
+      var email = emailState[0];
+      var setEmail = emailState[1];
+      var passState = useState('');
+      var password = passState[0];
+      var setPassword = passState[1];
+      var errorState = useState('');
+      var error = errorState[0];
+      var setError = errorState[1];
+      var successState = useState('');
+      var success = successState[0];
+      var setSuccess = successState[1];
+      var loadingState = useState(false);
+      var loading = loadingState[0];
+      var setLoading = loadingState[1];
+      var isSignUpState = useState(false);
+      var isSignUp = isSignUpState[0];
+      var setIsSignUp = isSignUpState[1];
+
+      if (!isOpen) return null;
+
+      var handleLogin = async function(e) {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+        setLoading(true);
+        try {
+          var result = await supabase.auth.signInWithPassword({ email: email, password: password });
+          if (result.error) {
+            setError(result.error.message);
+            setLoading(false);
+          } else {
+            onLogin(result.data.user);
+            onClose();
+          }
+        } catch (err) {
+          setError('网络错误，请稍后重试');
+          setLoading(false);
+        }
+      };
+
+      var handleSignUp = async function(e) {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
+        if (password.length < 6) {
+          setError('密码至少需要6个字符');
+          return;
+        }
+        setLoading(true);
+        try {
+          var result = await supabase.auth.signUp({ email: email, password: password });
+          if (result.error) {
+            setError(result.error.message);
+            setLoading(false);
+          } else {
+            if (result.data.user && result.data.session) {
+              // 邮箱确认未开启，直接登录
+              onLogin(result.data.user);
+              onClose();
+            } else {
+              setSuccess('注册成功！请检查邮箱确认链接，或直接切换到登录');
+              setLoading(false);
+            }
+          }
+        } catch (err) {
+          setError('网络错误，请稍后重试');
+          setLoading(false);
+        }
+      };
+
+      var switchMode = function() {
+        setIsSignUp(!isSignUp);
+        setError('');
+        setSuccess('');
+      };
+
+      return h('div', { className: 'modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: onClose },
+        h('div', { className: 'modal-content bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden', onClick: function(e) { e.stopPropagation(); } },
+          h('div', { className: 'p-6' },
+            h('div', { className: 'text-center mb-6' },
+              h('div', { className: 'w-12 h-12 rounded-xl bg-gradient-to-br from-primary-600 to-primary-700 flex items-center justify-center mx-auto mb-3' },
+                h('span', { className: 'text-white font-bold text-xl' }, '优')
+              ),
+              h('h3', { className: 'text-xl font-bold text-gray-900' }, isSignUp ? '注册账号' : '登录账号'),
+              h('p', { className: 'text-sm text-gray-500 mt-1' }, isSignUp ? '注册后可查看预约记录' : '登录查看您的预约记录')
+            ),
+            h('form', { onSubmit: isSignUp ? handleSignUp : handleLogin, className: 'space-y-3' },
+              h('div', null,
+                h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, '邮箱'),
+                h('input', { type: 'email', value: email, onChange: function(e) { setEmail(e.target.value); }, placeholder: 'your@email.com', required: true,
+                  className: 'w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all' })
+              ),
+              h('div', null,
+                h('label', { className: 'block text-sm font-medium text-gray-700 mb-1' }, '密码'),
+                h('input', { type: 'password', value: password, onChange: function(e) { setPassword(e.target.value); }, placeholder: isSignUp ? '至少6个字符' : '请输入密码', required: true,
+                  className: 'w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all' })
+              ),
+              error ? h('p', { className: 'text-red-500 text-sm bg-red-50 p-2 rounded-lg' }, error) : null,
+              success ? h('p', { className: 'text-green-600 text-sm bg-green-50 p-2 rounded-lg' }, success) : null,
+              h('button', { type: 'submit', disabled: loading,
+                className: 'w-full py-2.5 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors disabled:opacity-60' },
+                loading ? (isSignUp ? '注册中...' : '登录中...') : (isSignUp ? '注册' : '登录')
+              )
+            ),
+            h('div', { className: 'mt-4 text-center' },
+              h('button', { onClick: switchMode, className: 'text-sm text-primary-600 hover:text-primary-700 transition-colors' },
+                isSignUp ? '已有账号？去登录' : '没有账号？注册一个'
+              )
+            )
+          )
+        )
+      );
+    }
+
+    // ─── 我的预约弹窗 ───
+    function MyBookingsModal(props) {
+      var isOpen = props.isOpen;
+      var onClose = props.onClose;
+      var user = props.user;
+
+      var phoneState = useState(user ? user.email : '');
+      var lookupPhone = phoneState[0];
+      var setLookupPhone = phoneState[1];
+
+      var bookingsState = useState([]);
+      var bookings = bookingsState[0];
+      var setBookings = bookingsState[1];
+      var loadingState = useState(false);
+      var loading = loadingState[0];
+      var setLoading = loadingState[1];
+      var searchedState = useState(false);
+      var searched = searchedState[0];
+      var setSearched = searchedState[1];
+      var errorState = useState('');
+      var error = errorState[0];
+      var setError = errorState[1];
+
+      var handleSearch = async function(e) {
+        e.preventDefault();
+        if (!lookupPhone.trim()) {
+          setError('请输入预约时填写的手机号');
+          return;
+        }
+        setError('');
+        setLoading(true);
+        setSearched(true);
+        try {
+          var result = await supabase.from('bookings')
+            .select('*, tutors(name, subject)')
+            .eq('phone', lookupPhone.trim())
+            .order('created_at', { ascending: false });
+          if (result.data) setBookings(result.data);
+          if (result.error) setError(result.error.message);
+        } catch (err) {
+          setError('查询失败，请稍后重试');
+        }
+        setLoading(false);
+      };
+
+      if (!isOpen) return null;
+
+      var statusLabels = { pending: '待确认', confirmed: '已确认', completed: '已完成', cancelled: '已取消' };
+      var paymentLabels = { unpaid: '未支付', submitted: '待确认', paid: '已确认收款' };
+      var statusColors = { pending: 'bg-yellow-100 text-yellow-700', confirmed: 'bg-blue-100 text-blue-700', completed: 'bg-green-100 text-green-700', cancelled: 'bg-gray-100 text-gray-500' };
+      var paymentColors = { unpaid: 'bg-red-100 text-red-600', submitted: 'bg-orange-100 text-orange-600', paid: 'bg-green-100 text-green-600' };
+
+      return h('div', { className: 'modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: onClose },
+        h('div', { className: 'modal-content bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col', onClick: function(e) { e.stopPropagation(); } },
+          h('div', { className: 'p-5 border-b border-gray-100 flex items-center justify-between' },
+            h('h3', { className: 'text-lg font-bold text-gray-900' }, '查询预约'),
+            h('button', { onClick: onClose, className: 'text-gray-400 hover:text-gray-600 text-xl' }, '✕')
+          ),
+          h('div', { className: 'p-5' },
+            h('form', { onSubmit: handleSearch, className: 'flex gap-2 mb-4' },
+              h('input', { type: 'tel', value: lookupPhone, onChange: function(e) { setLookupPhone(e.target.value); }, placeholder: '输入预约时填写的手机号',
+                className: 'flex-1 px-4 py-2.5 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all text-sm' }),
+              h('button', { type: 'submit', disabled: loading,
+                className: 'px-6 py-2.5 bg-primary-600 text-white rounded-xl font-medium text-sm hover:bg-primary-700 transition-colors disabled:opacity-60' },
+                loading ? '查询中...' : '查询'
+              )
+            ),
+            error ? h('p', { className: 'text-red-500 text-sm mb-3' }, error) : null
+          ),
+          h('div', { className: 'flex-1 overflow-y-auto px-5 pb-5' },
+            loading
+              ? h('div', { className: 'text-center text-gray-400 py-8' }, '查询中...')
+              : !searched
+                ? h('div', { className: 'text-center py-8' },
+                    h('div', { className: 'text-4xl mb-3' }, '📱'),
+                    h('p', { className: 'text-gray-400 text-sm' }, '输入预约时填写的手机号即可查看预约状态')
+                  )
+                : bookings.length === 0
+                  ? h('div', { className: 'text-center py-8' },
+                      h('div', { className: 'text-4xl mb-3' }, '📋'),
+                      h('p', { className: 'text-gray-400' }, '未找到该手机号的预约记录')
+                    )
+                  : h('div', { className: 'space-y-3' },
+                      bookings.map(function(b) {
+                        return h('div', { key: b.id, className: 'border border-gray-100 rounded-xl p-4' },
+                          h('div', { className: 'flex items-center justify-between mb-2' },
+                            h('span', { className: 'font-medium text-gray-900' }, b.tutors ? b.tutors.name + ' 老师' : '自由预约'),
+                            h('span', { className: 'text-xs px-2 py-1 rounded-full font-medium ' + (statusColors[b.status] || '') }, statusLabels[b.status] || b.status)
+                          ),
+                          h('div', { className: 'text-sm text-gray-500 space-y-1' },
+                            b.tutors ? h('p', null, '科目：' + b.tutors.subject) : null,
+                            h('p', null, '年级：' + b.grade),
+                            h('p', null, '姓名：' + b.student_name),
+                            h('p', null, '提交时间：' + new Date(b.created_at).toLocaleString('zh-CN'))
+                          ),
+                          h('div', { className: 'mt-2 pt-2 border-t border-gray-50 flex items-center justify-between' },
+                            h('span', { className: 'text-xs text-gray-400' }, '支付状态'),
+                            h('span', { className: 'text-xs px-2 py-1 rounded-full font-medium ' + (paymentColors[b.payment_status] || '') }, paymentLabels[b.payment_status] || b.payment_status)
+                          )
+                        );
+                      })
+                    )
+          )
+        )
+      );
+    }
+
     // ─── Booking Modal ───
     function BookingModal(props) {
       var isOpen = props.isOpen;
@@ -359,12 +587,19 @@
     // ─── Header ───
     function Header(props) {
       var onBookClick = props.onBookClick;
+      var user = props.user;
+      var onLoginClick = props.onLoginClick;
+      var onMyBookingsClick = props.onMyBookingsClick;
+      var onLogout = props.onLogout;
       var menuState = useState(false);
       var menuOpen = menuState[0];
       var setMenuOpen = menuState[1];
       var scrolledState = useState(false);
       var scrolled = scrolledState[0];
       var setScrolled = scrolledState[1];
+      var userMenuState = useState(false);
+      var userMenuOpen = userMenuState[0];
+      var setUserMenuOpen = userMenuState[1];
 
       useEffect(function() {
         var handler = function() { setScrolled(window.scrollY > 20); };
@@ -389,7 +624,18 @@
               })
             ),
             h('div', { className: 'hidden md:flex items-center gap-3' },
-              h('button', { className: 'text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors' }, '登录'),
+              user
+                ? h('div', { className: 'relative' },
+                    h('button', { onClick: function() { setUserMenuOpen(!userMenuOpen); }, className: 'flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors bg-gray-50 px-3 py-2 rounded-xl' },
+                      h('span', { className: 'w-7 h-7 rounded-full bg-primary-100 flex items-center justify-center text-xs' }, '👤'),
+                      h('span', null, user.email.split('@')[0])
+                    ),
+                    userMenuOpen ? h('div', { className: 'absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 min-w-[140px]' },
+                      h('button', { onClick: function() { onMyBookingsClick(); setUserMenuOpen(false); }, className: 'w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors' }, '📋 我的预约'),
+                      h('button', { onClick: function() { onLogout(); setUserMenuOpen(false); }, className: 'w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50 transition-colors' }, '退出登录')
+                    ) : null
+                  )
+                : h('button', { onClick: onLoginClick, className: 'text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors' }, '登录'),
               h('button', { onClick: onBookClick, className: 'px-5 py-2.5 bg-accent-500 text-white text-sm font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200' }, '免费试听')
             ),
             h('button', { className: 'md:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors', onClick: function() { setMenuOpen(!menuOpen); } },
@@ -403,7 +649,13 @@
               return h('a', { key: item, href: '#', className: 'block px-4 py-3 text-gray-700 hover:bg-primary-50 hover:text-primary-600 rounded-xl font-medium transition-colors' }, item);
             }),
             h('div', { className: 'pt-3 border-t border-gray-100 mt-2 space-y-2' },
-              h('button', { className: 'w-full text-left px-4 py-3 text-gray-700 font-medium' }, '登录'),
+              user
+                ? h('div', null,
+                    h('p', { className: 'px-4 py-2 text-sm text-gray-500' }, '👤 ' + user.email),
+                    h('button', { onClick: function() { onMyBookingsClick(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-gray-700 font-medium hover:bg-gray-50 rounded-xl' }, '📋 我的预约'),
+                    h('button', { onClick: function() { onLogout(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-red-500 font-medium hover:bg-red-50 rounded-xl' }, '退出登录')
+                  )
+                : h('button', { onClick: function() { onLoginClick(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-gray-700 font-medium' }, '登录'),
               h('button', { onClick: function() { onBookClick(); setMenuOpen(false); }, className: 'w-full py-3 bg-accent-500 text-white rounded-xl font-semibold' }, '免费试听')
             )
           )
@@ -603,6 +855,23 @@
       var bookingInfo = bookingInfoState[0];
       var setBookingInfo = bookingInfoState[1];
 
+      // 顾客登录状态
+      var userState = useState(null);
+      var user = userState[0];
+      var setUser = userState[1];
+
+      var authModalState = useState(false);
+      var authModalOpen = authModalState[0];
+      var setAuthModalOpen = authModalState[1];
+
+      var bookingsModalState = useState(false);
+      var bookingsModalOpen = bookingsModalState[0];
+      var setBookingsModalOpen = bookingsModalState[1];
+
+      var authCheckingState = useState(true);
+      var authChecking = authCheckingState[0];
+      var setAuthChecking = authCheckingState[1];
+
       // 从 Supabase 加载导师数据
       var tutorsState = useState([]);
       var tutors = tutorsState[0];
@@ -625,7 +894,21 @@
           }
           setLoading(false);
         }
+
+        async function checkSession() {
+          try {
+            var result = await supabase.auth.getSession();
+            if (result.data && result.data.session) {
+              setUser(result.data.session.user);
+            }
+          } catch (err) {
+            // 未登录
+          }
+          setAuthChecking(false);
+        }
+
         loadTutors();
+        checkSession();
       }, []);
 
       var handleBook = function(tutor) {
@@ -638,15 +921,28 @@
         setPaymentOpen(true);
       };
 
+      var handleLogout = async function() {
+        await supabase.auth.signOut();
+        setUser(null);
+      };
+
       return h('div', { className: 'min-h-screen' },
-        h(Header, { onBookClick: function() { handleBook(null); } }),
+        h(Header, {
+          onBookClick: function() { handleBook(null); },
+          user: user,
+          onLoginClick: function() { setAuthModalOpen(true); },
+          onMyBookingsClick: function() { setBookingsModalOpen(true); },
+          onLogout: handleLogout
+        }),
         h(HeroSection, { onBookClick: function() { handleBook(null); } }),
         h(FilterSection, { onBookClick: handleBook, tutors: tutors, loading: loading }),
         h(StatsSection),
         h(FeaturesSection),
         h(Footer),
         h(BookingModal, { isOpen: modalOpen, onClose: function() { setModalOpen(false); }, tutor: selectedTutor, onBookingSuccess: handleBookingSuccess }),
-        h(PaymentModal, { isOpen: paymentOpen, onClose: function() { setPaymentOpen(false); }, bookingInfo: bookingInfo })
+        h(PaymentModal, { isOpen: paymentOpen, onClose: function() { setPaymentOpen(false); }, bookingInfo: bookingInfo }),
+        h(CustomerAuthModal, { isOpen: authModalOpen, onClose: function() { setAuthModalOpen(false); }, onLogin: setUser }),
+        h(MyBookingsModal, { isOpen: bookingsModalOpen, onClose: function() { setBookingsModalOpen(false); }, user: user })
       );
     }
 
