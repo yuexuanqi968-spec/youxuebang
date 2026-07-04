@@ -44,7 +44,8 @@
     var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     // ─── 科目列表 ───
-    var SUBJECTS = ['全部', '数学', '英语', '物理'];
+    var SUBJECTS = ['全部', '数学', '英语', '物理', '化学', '生物', '语文', '历史', '地理', '政治'];
+    var GRADE_LEVELS = ['全部', '小学', '初中', '高中'];
 
     var FEATURES = [
       { icon: '🎯', title: '精准匹配', desc: 'AI智能分析学生学情，精准推荐最适合的导师，让每一分钱都花在刀刃上。' },
@@ -975,6 +976,18 @@
       );
     }
 
+    // ─── 判断导师学段 ───
+    function getGradeLevel(tutor) {
+      var text = (tutor.intro || '') + ' ' + (tutor.tags || []).join(' ');
+      if (text.indexOf('小学') !== -1 || text.indexOf('小升初') !== -1) return '小学';
+      if (text.indexOf('初中') !== -1 || text.indexOf('中考') !== -1 || text.indexOf('初三') !== -1) return '初中';
+      if (text.indexOf('高中') !== -1 || text.indexOf('高考') !== -1 || text.indexOf('高三') !== -1) return '高中';
+      // 默认根据年级关键词推断
+      if (text.indexOf('初一') !== -1 || text.indexOf('初二') !== -1) return '初中';
+      if (text.indexOf('高一') !== -1 || text.indexOf('高二') !== -1) return '高中';
+      return '全部'; // 无法判断
+    }
+
     // ─── Filter Section ───
     function FilterSection(props) {
       var onBookClick = props.onBookClick;
@@ -986,6 +999,10 @@
       var activeSubject = activeState[0];
       var setActiveSubject = activeState[1];
 
+      var gradeState = useState('全部');
+      var activeGrade = gradeState[0];
+      var setActiveGrade = gradeState[1];
+
       // 同步外部搜索
       useEffect(function() {
         if (searchSubject !== undefined && searchSubject !== null) {
@@ -993,14 +1010,19 @@
         }
       }, [searchSubject]);
 
-      // 过滤逻辑：支持单个科目或数组（理科→数学+物理+化学+生物）
-      var filtered;
-      if (!activeSubject || activeSubject === '全部') {
-        filtered = tutors;
-      } else if (Array.isArray(activeSubject)) {
-        filtered = tutors.filter(function(t) { return activeSubject.indexOf(t.subject) !== -1; });
-      } else {
-        filtered = tutors.filter(function(t) { return t.subject === activeSubject; });
+      // 过滤逻辑：科目 + 学段
+      var filtered = tutors;
+      // 科目过滤
+      if (activeSubject && activeSubject !== '全部') {
+        if (Array.isArray(activeSubject)) {
+          filtered = filtered.filter(function(t) { return activeSubject.indexOf(t.subject) !== -1; });
+        } else {
+          filtered = filtered.filter(function(t) { return t.subject === activeSubject; });
+        }
+      }
+      // 学段过滤
+      if (activeGrade && activeGrade !== '全部') {
+        filtered = filtered.filter(function(t) { return getGradeLevel(t) === activeGrade || getGradeLevel(t) === '全部'; });
       }
 
       var displaySubject = Array.isArray(activeSubject) ? '理科' : activeSubject;
@@ -1011,10 +1033,23 @@
             h('h2', { className: 'text-3xl lg:text-4xl font-bold text-gray-900 mb-3' }, '严选优质导师'),
             h('p', { className: 'text-gray-500 max-w-lg mx-auto' }, '每位导师均经过严格筛选，确保教学质量与学习体验')
           ),
+          // 学段筛选
+          h('div', { className: 'flex justify-center gap-2 mb-4 flex-wrap' },
+            h('div', { className: 'text-xs text-gray-400 self-center mr-2 font-medium' }, '学段'),
+            GRADE_LEVELS.map(function(grade) {
+              return h('button', { key: grade, onClick: function() { setActiveGrade(grade); },
+                className: 'px-5 py-2 rounded-xl text-sm font-medium transition-all ' +
+                  (activeGrade === grade
+                    ? 'bg-accent-500 text-white shadow-lg shadow-accent-200'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100') }, grade);
+            })
+          ),
+          // 科目筛选
           h('div', { className: 'flex justify-center gap-2 mb-10 flex-wrap' },
+            h('div', { className: 'text-xs text-gray-400 self-center mr-2 font-medium' }, '科目'),
             SUBJECTS.map(function(subject) {
               return h('button', { key: subject, onClick: function() { setActiveSubject(subject); },
-                className: 'px-6 py-2.5 rounded-xl text-sm font-medium transition-all ' +
+                className: 'px-5 py-2 rounded-xl text-sm font-medium transition-all ' +
                   (activeSubject === subject
                     ? 'bg-primary-600 text-white shadow-lg shadow-primary-200'
                     : 'bg-gray-50 text-gray-600 hover:bg-gray-100 border border-gray-100') }, subject);
@@ -1026,8 +1061,8 @@
               h('span', null, '加载导师数据中...')
             )
           ) : filtered.length === 0 ? h('div', { className: 'text-center py-16 text-gray-400' },
-            h('p', { className: 'text-lg' }, '暂无「' + displaySubject + '」的导师数据'),
-            h('p', { className: 'text-sm mt-2' }, '试试搜索其他科目')
+            h('p', { className: 'text-lg' }, '暂无该条件的导师数据'),
+            h('p', { className: 'text-sm mt-2' }, '试试调整筛选条件或搜索其他关键词')
           ) : h('div', { className: 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6' },
             filtered.map(function(tutor) {
               return h(TutorCard, { key: tutor.id, tutor: tutor, onBook: onBookClick });
