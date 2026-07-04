@@ -1,0 +1,15 @@
+name: 🚀 自动部署到 Netlify
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔔 触发 Netlify 部署
+        run: |
+          curl -X POST "https://api.netlify.com/build_hooks/6a48e4417c5c2f728c6d8d49"
+          echo ""
+          echo "✅ 部署已触发！访问 https://youxuebang.netlify.app"
