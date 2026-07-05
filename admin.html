@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>优学帮 - 管理后台</title>
+  <!-- 必须在 Supabase 加载前捕获密码重置标记 -->
+  <script>window._window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -35,7 +37,7 @@
     var useEffect = React.useEffect;
 
     // ─── 在 Supabase 吃掉 hash 之前捕获密码重置标记 ───
-    var _isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;
+    var window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;
 
     // ─── Supabase 初始化 ───
     // 优先读取 js/supabase-config.js（Netlify 构建时生成）
@@ -598,7 +600,7 @@
             var result = await supabase.auth.getSession();
             if (result.data && result.data.session) {
               // 密码重置流程：直接放行，跳过管理员检查
-              if (_isPasswordRecovery) {
+              if (window.__isPasswordRecovery) {
                 setUser(result.data.session.user);
               } else {
                 // 正常登录：验证是否为管理员
@@ -629,7 +631,7 @@
       }, []);
 
       // 重置密码页面
-      if (_isPasswordRecovery) {
+      if (window.__isPasswordRecovery) {
         var newPassState = useState('');
         var newPass = newPassState[0];
         var setNewPass = newPassState[1];
