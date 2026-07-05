@@ -430,6 +430,17 @@
         setSuccess('');
       };
 
+      var handleForgotPassword = async function() {
+        if (!email.trim()) { setError('请先输入邮箱地址'); return; }
+        setError('');
+        setSuccess('');
+        setLoading(true);
+        var result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + '/admin.html' });
+        setLoading(false);
+        if (result.error) { setError(result.error.message); }
+        else { setSuccess('密码重置邮件已发送，请检查邮箱'); }
+      };
+
       return h('div', { className: 'modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: onClose },
         h('div', { className: 'modal-content bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden', onClick: function(e) { e.stopPropagation(); } },
           h('div', { className: 'p-6' },
@@ -461,7 +472,10 @@
             h('div', { className: 'mt-4 text-center' },
               h('button', { onClick: switchMode, className: 'text-sm text-primary-600 hover:text-primary-700 transition-colors' },
                 isSignUp ? '已有账号？去登录' : '没有账号？注册一个'
-              )
+              ),
+              !isSignUp ? h('div', { className: 'mt-2' },
+                h('button', { onClick: handleForgotPassword, className: 'text-xs text-gray-400 hover:text-primary-500 transition-colors' }, '忘记密码？')
+              ) : null
             )
           )
         )
@@ -855,6 +869,17 @@
         }
       };
 
+      var handleForgotPassword = async function() {
+        if (!authEmail.trim()) { setAuthError('请先输入邮箱地址'); return; }
+        setAuthError('');
+        setAuthSuccess('');
+        setAuthLoading(true);
+        var result = await supabase.auth.resetPasswordForEmail(authEmail.trim(), { redirectTo: window.location.origin + '/admin.html' });
+        setAuthLoading(false);
+        if (result.error) { setAuthError(result.error.message); }
+        else { setAuthSuccess('密码重置邮件已发送，请检查邮箱'); }
+      };
+
       var navItems = ['首页', '找导师', '课程', '关于我们'];
 
       var authModal = !authOpen ? null : h('div', { className: 'fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: function() { setAuthOpen(false); } },
@@ -888,7 +913,10 @@
             h('div', { className: 'mt-4 text-center' },
               h('button', { onClick: function() { setIsSignUp(!isSignUp); setAuthError(''); setAuthSuccess(''); }, className: 'text-sm text-primary-600 hover:text-primary-700 transition-colors' },
                 isSignUp ? '已有账号？去登录' : '没有账号？注册一个'
-              )
+              ),
+              !isSignUp ? h('div', { className: 'mt-2' },
+                h('button', { onClick: handleForgotPassword, className: 'text-xs text-gray-400 hover:text-primary-500 transition-colors' }, '忘记密码？')
+              ) : null
             )
           )
         )

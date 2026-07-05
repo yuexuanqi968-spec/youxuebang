@@ -75,6 +75,9 @@
       var errorState = useState('');
       var error = errorState[0];
       var setError = errorState[1];
+      var successState = useState('');
+      var success = successState[0];
+      var setSuccess = successState[1];
       var loadingState = useState(false);
       var loading = loadingState[0];
       var setLoading = loadingState[1];
@@ -82,6 +85,7 @@
       var handleLogin = async function(e) {
         e.preventDefault();
         setError('');
+        setSuccess('');
         setLoading(true);
         try {
           var result = await supabase.auth.signInWithPassword({ email: email, password: password });
@@ -95,6 +99,17 @@
           setError('网络错误，请稍后重试');
           setLoading(false);
         }
+      };
+
+      var handleForgotPassword = async function() {
+        if (!email.trim()) { setError('请先输入邮箱地址'); return; }
+        setError('');
+        setSuccess('');
+        setLoading(true);
+        var result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + '/admin.html' });
+        setLoading(false);
+        if (result.error) { setError(result.error.message); }
+        else { setSuccess('密码重置邮件已发送，请检查邮箱'); }
       };
 
       return h('div', { className: 'min-h-screen flex items-center justify-center p-4' },
@@ -118,9 +133,13 @@
                 className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 transition-all' })
             ),
             error ? h('p', { className: 'text-red-500 text-sm bg-red-50 p-2 rounded-lg' }, error) : null,
+            success ? h('p', { className: 'text-green-600 text-sm bg-green-50 p-2 rounded-lg' }, success) : null,
             h('button', { type: 'submit', disabled: loading,
               className: 'w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors disabled:opacity-60' },
               loading ? '登录中...' : '登录'
+            ),
+            h('div', { className: 'mt-2 text-center' },
+              h('button', { onClick: handleForgotPassword, className: 'text-xs text-gray-400 hover:text-primary-500 transition-colors' }, '忘记密码？')
             )
           )
         )
