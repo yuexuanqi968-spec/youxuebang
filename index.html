@@ -467,10 +467,10 @@
         setLoading(true);
         setSearched(true);
         try {
-          var result = await supabase.from('bookings')
-            .select('*, tutors(name, subject)')
-            .eq('phone', lookupPhone.trim())
-            .order('created_at', { ascending: false });
+          // 通过 RPC 函数安全查询（不暴露手机号和支付截图）
+          var result = await supabase.rpc('lookup_bookings_by_phone', {
+            p_phone: lookupPhone.trim()
+          });
           if (result.data) setBookings(result.data);
           if (result.error) setError(result.error.message);
         } catch (err) {
@@ -520,11 +520,11 @@
                       bookings.map(function(b) {
                         return h('div', { key: b.id, className: 'border border-gray-100 rounded-xl p-4' },
                           h('div', { className: 'flex items-center justify-between mb-2' },
-                            h('span', { className: 'font-medium text-gray-900' }, b.tutors ? b.tutors.name + ' 老师' : '自由预约'),
+                            h('span', { className: 'font-medium text-gray-900' }, b.tutor_name ? b.tutor_name + ' 老师' : '自由预约'),
                             h('span', { className: 'text-xs px-2 py-1 rounded-full font-medium ' + (statusColors[b.status] || '') }, statusLabels[b.status] || b.status)
                           ),
                           h('div', { className: 'text-sm text-gray-500 space-y-1' },
-                            b.tutors ? h('p', null, '科目：' + b.tutors.subject) : null,
+                            b.tutor_subject ? h('p', null, '科目：' + b.tutor_subject) : null,
                             h('p', null, '年级：' + b.grade),
                             h('p', null, '姓名：' + b.student_name),
                             h('p', null, '提交时间：' + new Date(b.created_at).toLocaleString('zh-CN'))
@@ -598,6 +598,22 @@
 
           // 成功
           var bookingId = result.data && result.data[0] ? result.data[0].id : null;
+
+          // 保存预约 ID 到本地，方便后续查询（不依赖手机号）
+          if (bookingId) {
+            try {
+              var savedBookings = JSON.parse(localStorage.getItem('youxuebang_bookings') || '[]');
+              savedBookings.push({
+                id: bookingId,
+                phone: form.phone,
+                time: new Date().toISOString(),
+                tutorName: tutor ? tutor.name : null
+              });
+              if (savedBookings.length > 20) savedBookings = savedBookings.slice(-20);
+              localStorage.setItem('youxuebang_bookings', JSON.stringify(savedBookings));
+            } catch (e) { /* localStorage 不可用（隐私模式/配额满）则跳过 */ }
+          }
+
           setForm({ name: '', phone: '', grade: '', demand: '' });
           setLoading(false);
           onClose();

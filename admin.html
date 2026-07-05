@@ -590,16 +590,32 @@
       var checking = checkingState[0];
       var setChecking = checkingState[1];
 
-      // 检查登录状态
+      // 检查登录状态 + 管理员鉴权
       useEffect(function() {
         async function checkSession() {
           try {
             var result = await supabase.auth.getSession();
             if (result.data && result.data.session) {
-              setUser(result.data.session.user);
+              // 验证是否为管理员
+              try {
+                var adminCheck = await supabase
+                  .from('admins')
+                  .select('*')
+                  .eq('user_id', result.data.session.user.id)
+                  .single();
+                if (adminCheck.data) {
+                  setUser(result.data.session.user);
+                } else {
+                  alert('无权限访问管理后台，请联系管理员');
+                  await supabase.auth.signOut();
+                }
+              } catch (e) {
+                // .single() 无匹配行或网络错误
+                alert('无权限访问管理后台，请联系管理员');
+                await supabase.auth.signOut();
+              }
             }
           } catch (err) {
-            // 未登录或网络错误，正常显示登录页
             console.log('未检测到登录状态');
           }
           setChecking(false);
@@ -612,6 +628,26 @@
         setUser(null);
       };
 
+      // 登录回调：验证管理员身份后才放行
+      var handleLogin = async function(user) {
+        try {
+          var adminCheck = await supabase
+            .from('admins')
+            .select('*')
+            .eq('user_id', user.id)
+            .single();
+          if (adminCheck.data) {
+            setUser(user);
+          } else {
+            alert('无权限访问管理后台，请联系管理员');
+            await supabase.auth.signOut();
+          }
+        } catch (e) {
+          alert('无权限访问管理后台，请联系管理员');
+          await supabase.auth.signOut();
+        }
+      };
+
       if (checking) {
         return h('div', { className: 'min-h-screen flex items-center justify-center' },
           h('div', { className: 'text-gray-400' }, '加载中...')
@@ -619,7 +655,7 @@
       }
 
       if (!user) {
-        return h(LoginPage, { onLogin: setUser });
+        return h(LoginPage, { onLogin: handleLogin });
       }
 
       return h(Dashboard, { user: user, onLogout: handleLogout });
