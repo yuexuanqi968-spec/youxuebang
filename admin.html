@@ -34,6 +34,9 @@
     var useState = React.useState;
     var useEffect = React.useEffect;
 
+    // ─── 在 Supabase 吃掉 hash 之前捕获密码重置标记 ───
+    var _isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;
+
     // ─── Supabase 初始化 ───
     // 优先读取 js/supabase-config.js（Netlify 构建时生成）
     // 加载失败则使用默认值兜底
@@ -586,8 +589,7 @@
       var checking = checkingState[0];
       var setChecking = checkingState[1];
 
-      // 密码重置流程
-      var isRecovery = window.location.hash.indexOf('type=recovery') !== -1;
+      // 密码重置流程（使用脚本开头捕获的标记，避免被 Supabase 吞掉）
 
       // 检查登录状态 + 管理员鉴权
       useEffect(function() {
@@ -596,7 +598,7 @@
             var result = await supabase.auth.getSession();
             if (result.data && result.data.session) {
               // 密码重置流程：直接放行，跳过管理员检查
-              if (isRecovery) {
+              if (_isPasswordRecovery) {
                 setUser(result.data.session.user);
               } else {
                 // 正常登录：验证是否为管理员
@@ -627,7 +629,7 @@
       }, []);
 
       // 重置密码页面
-      if (isRecovery) {
+      if (_isPasswordRecovery) {
         var newPassState = useState('');
         var newPass = newPassState[0];
         var setNewPass = newPassState[1];

@@ -40,6 +40,9 @@
     var useState = React.useState;
     var useEffect = React.useEffect;
 
+    // ─── 在 Supabase 吃掉 hash 之前捕获密码重置标记 ───
+    var _isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;
+
     // ─── Supabase 初始化 ───
     // 优先读取 js/supabase-config.js（Netlify 构建时生成）
     // 加载失败则使用默认值兜底
@@ -1422,8 +1425,8 @@
       };
 
       // ─── 密码重置流程 ───
-      var isRecovery = window.location.hash.indexOf('type=recovery') !== -1;
-      if (isRecovery) {
+      var _isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;
+      if (_isPasswordRecovery) {
         return h('div', { className: 'min-h-screen flex items-center justify-center p-4 bg-gray-50' },
           h(ResetPasswordPage, { onDone: function() {
             window.location.hash = '';
