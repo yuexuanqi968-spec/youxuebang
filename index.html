@@ -41,12 +41,11 @@
     var useEffect = React.useEffect;
 
     // ─── Supabase 初始化 ───
-    // 配置从 js/supabase-config.js 加载（本地开发）
-    // 生产环境由 Netlify 构建命令自动生成此文件
-    var supabase = window.supabase.createClient(
-      window.SUPABASE_URL,
-      window.SUPABASE_ANON_KEY
-    );
+    // 优先读取 js/supabase-config.js（Netlify 构建时生成）
+    // 加载失败则使用默认值兜底
+    var SUPABASE_URL = window.SUPABASE_URL || 'https://ttlplvlefvqixcedskat.supabase.co';
+    var SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_xCoCP3NC6gkD5nLEn8wfBw_yjmMg9xK';
+    var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // ─── 科目列表 ───
     var SUBJECTS = ['全部', '数学', '英语', '物理', '化学', '生物', '语文', '历史', '地理', '政治'];
