@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>优学帮 - 管理后台</title>
   <!-- 必须在 Supabase 加载前捕获密码重置标记 -->
-  <script>window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;</script>
+  <script>
+// 在 Supabase 加载前捕获密码重置标记（双重保险：hash + onAuthStateChange）
+window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;
+</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -44,6 +47,14 @@
     var SUPABASE_URL = window.SUPABASE_URL || 'https://ttlplvlefvqixcedskat.supabase.co';
     var SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'sb_publishable_xCoCP3NC6gkD5nLEn8wfBw_yjmMg9xK';
     var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 监听密码重置事件（官方推荐方式）
+    supabase.auth.onAuthStateChange(function(event, session) {
+      if (event === 'PASSWORD_RECOVERY') {
+        window.__isPasswordRecovery = true;
+        window.__recoveryReady = true;
+      }
+    });
 
     // ─── 工具函数 ───
     function formatDate(dateStr) {
