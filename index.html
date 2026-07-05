@@ -382,7 +382,12 @@
         try {
           var result = await supabase.auth.signInWithPassword({ email: email, password: password });
           if (result.error) {
-            setError(result.error.message);
+            var msg = result.error.message;
+            if (msg.indexOf('security') !== -1 || msg.indexOf('later') !== -1 || msg.indexOf('limit') !== -1 || msg.indexOf('many') !== -1) {
+              setError('登录次数过多，已被临时限制。建议使用下方「忘记密码？」重置后重新登录');
+            } else {
+              setError(msg);
+            }
             setLoading(false);
           } else {
             onLogin(result.data.user);
@@ -851,7 +856,12 @@
             ? await supabase.auth.signUp({ email: authEmail, password: authPass })
             : await supabase.auth.signInWithPassword({ email: authEmail, password: authPass });
           if (result.error) {
-            setAuthError(result.error.message);
+            var authMsg = result.error.message;
+            if (authMsg.indexOf('security') !== -1 || authMsg.indexOf('later') !== -1 || authMsg.indexOf('limit') !== -1 || authMsg.indexOf('many') !== -1) {
+              setAuthError('登录次数过多，已被临时限制。建议使用下方「忘记密码？」重置后重新登录');
+            } else {
+              setAuthError(authMsg);
+            }
             setAuthLoading(false);
           } else if (isSignUp && !result.data.session) {
             setAuthSuccess('注册成功！请检查邮箱确认链接，或直接切换登录');

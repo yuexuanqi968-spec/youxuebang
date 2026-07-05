@@ -90,7 +90,12 @@
         try {
           var result = await supabase.auth.signInWithPassword({ email: email, password: password });
           if (result.error) {
-            setError(result.error.message);
+            var loginMsg = result.error.message;
+            if (loginMsg.indexOf('security') !== -1 || loginMsg.indexOf('later') !== -1 || loginMsg.indexOf('limit') !== -1 || loginMsg.indexOf('many') !== -1) {
+              setError('登录次数过多，已被临时限制。建议使用下方「忘记密码？」重置后重新登录');
+            } else {
+              setError(loginMsg);
+            }
             setLoading(false);
           } else {
             onLogin(result.data.user);
