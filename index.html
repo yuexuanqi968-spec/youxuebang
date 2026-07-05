@@ -440,7 +440,7 @@
         setError('');
         setSuccess('');
         setLoading(true);
-        var result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + '/admin.html' });
+        var result = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + '' });
         setLoading(false);
         if (result.error) { setError(result.error.message); }
         else { setSuccess('密码重置邮件已发送，请检查邮箱'); }
@@ -884,7 +884,7 @@
         setAuthError('');
         setAuthSuccess('');
         setAuthLoading(true);
-        var result = await supabase.auth.resetPasswordForEmail(authEmail.trim(), { redirectTo: window.location.origin + '/admin.html' });
+        var result = await supabase.auth.resetPasswordForEmail(authEmail.trim(), { redirectTo: window.location.origin + '' });
         setAuthLoading(false);
         if (result.error) { setAuthError(result.error.message); }
         else { setAuthSuccess('密码重置邮件已发送，请检查邮箱'); }
@@ -1277,6 +1277,47 @@
       );
     }
 
+    // ─── 密码重置页面 ───
+    function ResetPasswordPage(props) {
+      var newPassState = useState('');
+      var newPass = newPassState[0];
+      var setNewPass = newPassState[1];
+      var errorState = useState('');
+      var error = errorState[0];
+      var setError = errorState[1];
+      var okState = useState(false);
+      var ok = okState[0];
+      var setOk = okState[1];
+
+      var handleSubmit = async function(e) {
+        e.preventDefault();
+        if (newPass.length < 6) { setError('密码至少需要6个字符'); return; }
+        setError('');
+        var result = await supabase.auth.updateUser({ password: newPass });
+        if (result.error) { setError(result.error.message); }
+        else { setOk(true); setTimeout(function() { if (props.onDone) props.onDone(); }, 2000); }
+      };
+
+      return h('div', { className: 'bg-white rounded-2xl shadow-xl w-full max-w-sm p-8 text-center' },
+        ok
+          ? h('div', null,
+              h('p', { className: 'text-4xl mb-4' }, '✅'),
+              h('h2', { className: 'text-xl font-bold text-gray-900 mb-2' }, '密码重置成功'),
+              h('p', { className: 'text-sm text-gray-500' }, '即将刷新页面...')
+            )
+          : h('div', null,
+              h('h2', { className: 'text-xl font-bold text-gray-900 mb-2' }, '设置新密码'),
+              h('p', { className: 'text-sm text-gray-500 mb-6' }, '请输入您的新密码'),
+              h('form', { onSubmit: handleSubmit, className: 'space-y-4' },
+                h('input', { type: 'password', value: newPass, onChange: function(e) { setNewPass(e.target.value); }, placeholder: '至少6个字符', required: true,
+                  className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-left' }),
+                error ? h('p', { className: 'text-red-500 text-sm bg-red-50 p-2 rounded-lg text-left' }, error) : null,
+                h('button', { type: 'submit', className: 'w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors' }, '确认修改')
+              )
+            )
+      );
+    }
+
     // ─── App ───
     function App() {
       var modalState = useState(false);
@@ -1379,6 +1420,17 @@
         await supabase.auth.signOut();
         setUser(null);
       };
+
+      // ─── 密码重置流程 ───
+      var isRecovery = window.location.hash.indexOf('type=recovery') !== -1;
+      if (isRecovery) {
+        return h('div', { className: 'min-h-screen flex items-center justify-center p-4 bg-gray-50' },
+          h(ResetPasswordPage, { onDone: function() {
+            window.location.hash = '';
+            window.location.reload();
+          }})
+        );
+      }
 
       return h('div', { className: 'min-h-screen' },
         h(Header, {
