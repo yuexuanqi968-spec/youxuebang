@@ -94,12 +94,47 @@
       );
     }
 
+    // ─── 导师联系方式行 ───
+    function TutorContactRow(props) {
+      var tutorId = props.tutorId;
+      var isPaid = props.isPaid;
+      var contactState = useState(null);
+      var contact = contactState[0];
+      var setContact = contactState[1];
+      var contactLoadingState = useState(false);
+      var contactLoading = contactLoadingState[0];
+      var setContactLoading = contactLoadingState[1];
+
+      useEffect(function() {
+        if (!tutorId || !isPaid) return;
+        setContactLoading(true);
+        supabase.from('tutor_contacts').select('*').eq('tutor_id', tutorId).maybeSingle()
+          .then(function(r) { if (r.data) setContact(r.data); setContactLoading(false); })
+          .catch(function() { setContactLoading(false); });
+      }, [tutorId, isPaid]);
+
+      if (!isPaid) return null;
+
+      return h('div', { className: 'bg-green-50 border border-green-200 rounded-xl p-3 mt-3 text-left' },
+        h('p', { className: 'text-xs font-medium text-green-700 mb-2' }, '📞 导师联系方式'),
+        contactLoading
+          ? h('p', { className: 'text-xs text-green-500' }, '加载中...')
+          : contact
+            ? h('div', { className: 'space-y-1' },
+                contact.wechat ? h('p', { className: 'text-sm text-green-700' }, '微信：' + contact.wechat) : null,
+                contact.phone ? h('p', { className: 'text-sm text-green-700' }, '手机：' + contact.phone) : null
+              )
+            : h('p', { className: 'text-xs text-green-500' }, '管理员确认收款后将显示联系方式')
+      );
+    }
+
     // ─── 支付弹窗 ───
     function PaymentModal(props) {
       var isOpen = props.isOpen;
       var onClose = props.onClose;
       var bookingInfo = props.bookingInfo;
       var bookingId = bookingInfo ? bookingInfo.bookingId : null;
+      var user = props.user;
 
       var submittedState = useState(false);
       var submitted = submittedState[0];
@@ -531,7 +566,10 @@
                           h('div', { className: 'mt-2 pt-2 border-t border-gray-50 flex items-center justify-between' },
                             h('span', { className: 'text-xs text-gray-400' }, '支付状态'),
                             h('span', { className: 'text-xs px-2 py-1 rounded-full font-medium ' + (paymentColors[b.payment_status] || '') }, paymentLabels[b.payment_status] || b.payment_status)
-                          )
+                          ),
+                          b.payment_status === 'paid' && b.tutor_id
+                            ? h(TutorContactRow, { tutorId: b.tutor_id, isPaid: true })
+                            : null
                         );
                       })
                     )
@@ -546,6 +584,7 @@
       var onClose = props.onClose;
       var tutor = props.tutor;
       var onBookingSuccess = props.onBookingSuccess;
+      var user = props.user;
 
       var formState = useState({ name: '', phone: '', grade: '', demand: '' });
       var form = formState[0];
@@ -597,6 +636,15 @@
 
           // 成功
           var bookingId = result.data && result.data[0] ? result.data[0].id : null;
+
+          // 如果已登录，同时创建 orders 记录（用于 RLS 策略验证付费后查看联系方式）
+          if (bookingId && user && tutor) {
+            supabase.from('orders').insert({
+              student_id: user.id,
+              tutor_id: tutor.id,
+              status: 'pending'
+            }).then(function() { /* 静默创建，失败不影响预约主流程 */ });
+          }
 
           // 保存预约 ID 到本地，方便后续查询（不依赖手机号）
           if (bookingId) {
@@ -1307,8 +1355,8 @@
         h(StatsSection),
         h(FeaturesSection),
         h(Footer),
-        h(BookingModal, { isOpen: modalOpen, onClose: function() { setModalOpen(false); }, tutor: selectedTutor, onBookingSuccess: handleBookingSuccess }),
-        h(PaymentModal, { isOpen: paymentOpen, onClose: function() { setPaymentOpen(false); }, bookingInfo: bookingInfo }),
+        h(BookingModal, { isOpen: modalOpen, onClose: function() { setModalOpen(false); }, tutor: selectedTutor, onBookingSuccess: handleBookingSuccess, user: user }),
+        h(PaymentModal, { isOpen: paymentOpen, onClose: function() { setPaymentOpen(false); }, bookingInfo: bookingInfo, user: user }),
         h(MyBookingsModal, { isOpen: bookingsModalOpen, onClose: function() { setBookingsModalOpen(false); }, user: user })
       );
     }

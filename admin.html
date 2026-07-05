@@ -349,10 +349,22 @@
         var result = await supabase.from('bookings').update(update).eq('id', bookingId);
         if (result.error) {
           alert('更新失败：' + result.error.message);
-        } else {
-          loadData();
-          setSelectedBooking(null);
+          return;
         }
+
+        // 管理员确认收款 → 更新 orders 表中该导师的待支付订单
+        if (paymentStatus === 'paid') {
+          var booking = bookings.find(function(b) { return b.id === bookingId; });
+          if (booking && booking.tutor_id) {
+            await supabase.from('orders')
+              .update({ status: 'paid' })
+              .eq('tutor_id', booking.tutor_id)
+              .eq('status', 'pending');
+          }
+        }
+
+        loadData();
+        setSelectedBooking(null);
       };
 
       // 保存导师
