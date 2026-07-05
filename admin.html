@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>优学帮 - 管理后台</title>
   <!-- 必须在 Supabase 加载前捕获密码重置标记 -->
-  <script>window._window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;</script>
+  <script>window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -36,8 +36,7 @@
     var useState = React.useState;
     var useEffect = React.useEffect;
 
-    // ─── 在 Supabase 吃掉 hash 之前捕获密码重置标记 ───
-    var window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;
+    // ─── 密码重置标记已由 <head> 脚本捕获 ───
 
     // ─── Supabase 初始化 ───
     // 优先读取 js/supabase-config.js（Netlify 构建时生成）
@@ -591,16 +590,28 @@
       var checking = checkingState[0];
       var setChecking = checkingState[1];
 
-      // 密码重置流程（使用脚本开头捕获的标记，避免被 Supabase 吞掉）
+      // 密码重置状态（所有 hooks 必须在顶层）
+      var newPassState = useState('');
+      var newPass = newPassState[0];
+      var setNewPass = newPassState[1];
+      var resetErrorState = useState('');
+      var resetError = resetErrorState[0];
+      var setResetError = resetErrorState[1];
+      var resetOkState = useState(false);
+      var resetOk = resetOkState[0];
+      var setResetOk = resetOkState[1];
 
-      // 检查登录状态 + 管理员鉴权
+      // 使用脚本开头（<head> 中）捕获的标记
+      var isRecovery = window.__isPasswordRecovery;
+
+      // 检查登录状态
       useEffect(function() {
         async function checkSession() {
           try {
             var result = await supabase.auth.getSession();
             if (result.data && result.data.session) {
-              // 密码重置流程：直接放行，跳过管理员检查
-              if (window.__isPasswordRecovery) {
+              if (isRecovery) {
+                // 重置密码流程：跳过管理员检查，直接放行
                 setUser(result.data.session.user);
               } else {
                 // 正常登录：验证是否为管理员
@@ -610,60 +621,38 @@
                     .select('*')
                     .eq('user_id', result.data.session.user.id)
                     .single();
-                  if (adminCheck.data) {
-                    setUser(result.data.session.user);
-                  } else {
-                    alert('无权限访问管理后台，请联系管理员');
-                    await supabase.auth.signOut();
-                  }
-                } catch (e) {
-                  alert('无权限访问管理后台，请联系管理员');
-                  await supabase.auth.signOut();
-                }
+                  if (adminCheck.data) { setUser(result.data.session.user); }
+                  else { alert('无权限访问管理后台'); await supabase.auth.signOut(); }
+                } catch (e) { alert('无权限访问管理后台'); await supabase.auth.signOut(); }
               }
             }
-          } catch (err) {
-            console.log('未检测到登录状态');
-          }
+          } catch (err) { console.log('未检测到登录状态'); }
           setChecking(false);
         }
         checkSession();
       }, []);
 
-      // 重置密码页面
-      if (window.__isPasswordRecovery) {
-        var newPassState = useState('');
-        var newPass = newPassState[0];
-        var setNewPass = newPassState[1];
-        var resetErrorState = useState('');
-        var resetError = resetErrorState[0];
-        var setResetError = resetErrorState[1];
-        var resetOkState = useState(false);
-        var resetOk = resetOkState[0];
-        var setResetOk = resetOkState[1];
+      var handleResetPassword = async function(e) {
+        e.preventDefault();
+        if (newPass.length < 6) { setResetError('密码至少需要6个字符'); return; }
+        setResetError('');
+        var result = await supabase.auth.updateUser({ password: newPass });
+        if (result.error) { setResetError(result.error.message); }
+        else {
+          setResetOk(true);
+          setTimeout(function() { window.location.hash = ''; window.location.reload(); }, 2000);
+        }
+      };
 
-        var handleResetPassword = async function(e) {
-          e.preventDefault();
-          if (newPass.length < 6) { setResetError('密码至少需要6个字符'); return; }
-          setResetError('');
-          var updateResult = await supabase.auth.updateUser({ password: newPass });
-          if (updateResult.error) { setResetError(updateResult.error.message); }
-          else {
-            setResetOk(true);
-            setTimeout(function() {
-              window.location.hash = '';
-              window.location.reload();
-            }, 2000);
-          }
-        };
-
+      // ── 密码重置页面 ──
+      if (isRecovery) {
         return h('div', { className: 'min-h-screen flex items-center justify-center p-4 bg-gray-100' },
           h('div', { className: 'bg-white rounded-2xl shadow-xl w-full max-w-sm p-8 text-center' },
             resetOk
               ? h('div', null,
                   h('p', { className: 'text-4xl mb-4' }, '✅'),
                   h('h2', { className: 'text-xl font-bold text-gray-900 mb-2' }, '密码重置成功'),
-                  h('p', { className: 'text-sm text-gray-500' }, '即将跳转到登录页...')
+                  h('p', { className: 'text-sm text-gray-500' }, '即将跳转...')
                 )
               : h('div', null,
                   h('h2', { className: 'text-xl font-bold text-gray-900 mb-2' }, '设置新密码'),
@@ -672,8 +661,7 @@
                     h('input', { type: 'password', value: newPass, onChange: function(e) { setNewPass(e.target.value); }, placeholder: '至少6个字符', required: true,
                       className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-100 text-left' }),
                     resetError ? h('p', { className: 'text-red-500 text-sm bg-red-50 p-2 rounded-lg' }, resetError) : null,
-                    h('button', { type: 'submit',
-                      className: 'w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors' }, '确认修改')
+                    h('button', { type: 'submit', className: 'w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors' }, '确认修改')
                   )
                 )
           )
