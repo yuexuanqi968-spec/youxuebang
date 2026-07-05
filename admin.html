@@ -20,6 +20,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Supabase 配置（本地：js/supabase-config.js；生产：Netlify 构建时生成） -->
+  <script src="js/supabase-config.js"></script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
     body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
@@ -33,9 +35,12 @@
     var useEffect = React.useEffect;
 
     // ─── Supabase 初始化 ───
-    var SUPABASE_URL = 'https://ttlplvlefvqixcedskat.supabase.co';
-    var SUPABASE_KEY = 'sb_publishable_xCoCP3NC6gkD5nLEn8wfBw_yjmMg9xK';
-    var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // 配置从 js/supabase-config.js 加载（本地开发）
+    // 生产环境由 Netlify 构建命令自动生成此文件
+    var supabase = window.supabase.createClient(
+      window.SUPABASE_URL,
+      window.SUPABASE_ANON_KEY
+    );
 
     // ─── 工具函数 ───
     function formatDate(dateStr) {
