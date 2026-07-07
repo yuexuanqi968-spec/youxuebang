@@ -314,7 +314,7 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
               h('div', { className: 'grid grid-cols-2 gap-4' },
                 h('div', null,
                   h('p', { className: 'text-xs text-gray-400 mb-1' }, '姓名'),
-                  h('p', { className: 'font-medium text-gray-900' }, resume.name || '未填写')
+                  h('p', { className: 'font-medium text-gray-900' }, resume.real_name || '未填写')
                 ),
                 h('div', null,
                   h('p', { className: 'text-xs text-gray-400 mb-1' }, '性别'),
@@ -794,7 +794,7 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
                     var statusInfo = RESUME_STATUS_MAP[resume.status] || RESUME_STATUS_MAP.pending;
                     return h('tr', { key: resume.id, className: 'border-b border-gray-50 hover:bg-gray-50 transition-colors' },
                       h('td', { className: 'px-4 py-3' },
-                        h('p', { className: 'font-medium text-gray-900 text-sm' }, resume.name || '未填写'),
+                        h('p', { className: 'font-medium text-gray-900 text-sm' }, resume.real_name || '未填写'),
                         resume.phone ? h('p', { className: 'text-xs text-gray-400' }, resume.phone) : null
                       ),
                       h('td', { className: 'px-4 py-3 text-sm text-gray-600 hidden sm:table-cell' }, GENDER_MAP[resume.gender] || resume.gender || '未填写'),
