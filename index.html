@@ -916,7 +916,7 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
           if (degreeCert.url) resumeData.degree_cert_url = degreeCert.url;
           if (teachingCert.url) resumeData.teaching_cert_url = teachingCert.url;
 
-          var result = await supabase.from('teacher_resumes').insert(resumeData).select();
+          var result = await supabase.from('teacher_resumes').insert(resumeData);
 
           if (result.error) {
             alert('提交失败：' + result.error.message);
