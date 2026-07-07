@@ -77,6 +77,16 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
       submitted: { label: '待确认', color: 'bg-orange-100 text-orange-600' },
       paid: { label: '已确认收款', color: 'bg-green-100 text-green-600' }
     };
+    var RESUME_STATUS_MAP = {
+      pending: { label: '待审核', color: 'bg-yellow-100 text-yellow-700' },
+      approved: { label: '已通过', color: 'bg-green-100 text-green-700' },
+      rejected: { label: '已拒绝', color: 'bg-red-100 text-red-600' }
+    };
+    var GENDER_MAP = {
+      male: '男',
+      female: '女',
+      other: '其他'
+    };
 
     // ─── 管理员登录页面 ───
     function LoginPage(props) {
@@ -255,6 +265,131 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
       );
     }
 
+    // ─── 教师简历详情弹窗 ───
+    function TeacherResumeDetailModal(props) {
+      var resume = props.resume;
+      var onClose = props.onClose;
+      var onApprove = props.onApprove;
+      var onReject = props.onReject;
+
+      if (!resume) return null;
+
+      var statusInfo = RESUME_STATUS_MAP[resume.status] || RESUME_STATUS_MAP.pending;
+      var genderLabel = GENDER_MAP[resume.gender] || resume.gender || '未填写';
+
+      // 收集所有图片 URL 字段（列名包含 url 或 _url 的字段）
+      var imageFields = [];
+      Object.keys(resume).forEach(function(key) {
+        if (resume[key] && typeof resume[key] === 'string' && (key.indexOf('url') !== -1 || key.indexOf('_url') !== -1)) {
+          var label = key
+            .replace(/_/g, ' ')
+            .replace(/url/gi, '')
+            .trim()
+            .replace(/id card front/i, '身份证正面')
+            .replace(/id card back/i, '身份证反面')
+            .replace(/degree cert/i, '学历证书')
+            .replace(/teaching cert/i, '教师资格证')
+            .replace(/resume/i, '简历文件')
+            .replace(/front/i, '正面')
+            .replace(/back/i, '反面');
+          if (!label) label = '证件图片';
+          imageFields.push({ key: key, label: label, url: resume[key] });
+        }
+      });
+
+      return h('div', { className: 'fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: onClose },
+        h('div', { className: 'bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] overflow-y-auto', onClick: function(e) { e.stopPropagation(); } },
+          // 头部
+          h('div', { className: 'p-6 border-b border-gray-100' },
+            h('div', { className: 'flex items-center justify-between' },
+              h('h3', { className: 'text-lg font-bold text-gray-900' }, '教师简历详情'),
+              h('button', { onClick: onClose, className: 'text-gray-400 hover:text-gray-600 text-xl' }, '✕')
+            )
+          ),
+          // 内容
+          h('div', { className: 'p-6 space-y-4' },
+            // 基本信息
+            h('div', null,
+              h('p', { className: 'text-xs text-gray-400 mb-3 font-medium uppercase tracking-wide' }, '基本信息'),
+              h('div', { className: 'grid grid-cols-2 gap-4' },
+                h('div', null,
+                  h('p', { className: 'text-xs text-gray-400 mb-1' }, '姓名'),
+                  h('p', { className: 'font-medium text-gray-900' }, resume.name || '未填写')
+                ),
+                h('div', null,
+                  h('p', { className: 'text-xs text-gray-400 mb-1' }, '性别'),
+                  h('p', { className: 'font-medium text-gray-900' }, genderLabel)
+                ),
+                h('div', null,
+                  h('p', { className: 'text-xs text-gray-400 mb-1' }, '毕业院校'),
+                  h('p', { className: 'font-medium text-gray-900' }, resume.school || '未填写')
+                ),
+                h('div', null,
+                  h('p', { className: 'text-xs text-gray-400 mb-1' }, '教授科目'),
+                  h('p', { className: 'font-medium text-gray-900' }, resume.subject || '未填写')
+                ),
+                resume.phone ? h('div', null,
+                  h('p', { className: 'text-xs text-gray-400 mb-1' }, '联系电话'),
+                  h('p', { className: 'font-medium text-gray-900' }, resume.phone)
+                ) : null,
+                resume.email ? h('div', null,
+                  h('p', { className: 'text-xs text-gray-400 mb-1' }, '邮箱'),
+                  h('p', { className: 'font-medium text-gray-900 text-sm' }, resume.email)
+                ) : null
+              )
+            ),
+            // 个人介绍
+            resume.intro ? h('div', null,
+              h('p', { className: 'text-xs text-gray-400 mb-2 font-medium uppercase tracking-wide' }, '个人介绍'),
+              h('div', { className: 'bg-gray-50 rounded-xl p-4 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed' }, resume.intro)
+            ) : null,
+            // 证件图片
+            imageFields.length > 0 ? h('div', null,
+              h('p', { className: 'text-xs text-gray-400 mb-3 font-medium uppercase tracking-wide' }, '证件资料'),
+              h('div', { className: 'space-y-3' },
+                imageFields.map(function(img) {
+                  return h('div', { key: img.key, className: 'border border-gray-100 rounded-xl p-3' },
+                    h('p', { className: 'text-xs text-gray-500 mb-2' }, img.label),
+                    h('img', { src: img.url, alt: img.label,
+                      className: 'w-full max-h-48 rounded-lg object-contain border border-gray-200 cursor-pointer hover:border-primary-400 transition-colors',
+                      onClick: function() { window.open(img.url, '_blank'); } }),
+                    h('p', { className: 'text-xs text-gray-400 mt-1' }, '点击图片查看原图')
+                  );
+                })
+              )
+            ) : null,
+            // 审核状态
+            h('div', { className: 'flex items-center gap-4 pt-2' },
+              h('p', { className: 'text-xs text-gray-400' }, '当前状态'),
+              h('span', { className: 'inline-block px-3 py-1 rounded-full text-xs font-medium ' + statusInfo.color }, statusInfo.label)
+            ),
+            // 提交时间
+            resume.created_at ? h('div', null,
+              h('p', { className: 'text-xs text-gray-400' }, '提交时间：' + formatDate(resume.created_at))
+            ) : null
+          ),
+          // 底部操作按钮
+          h('div', { className: 'p-6 border-t border-gray-100 space-y-3' },
+            h('p', { className: 'text-xs text-gray-400 font-medium' }, '审核操作'),
+            h('div', { className: 'flex gap-3' },
+              resume.status !== 'approved' ? h('button', { onClick: function() { onApprove(resume.id); },
+                className: 'flex-1 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors' },
+                '✓ 审核通过'
+              ) : null,
+              resume.status !== 'rejected' ? h('button', { onClick: function() { onReject(resume.id); },
+                className: 'flex-1 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-colors' },
+                '✕ 拒绝'
+              ) : null,
+              resume.status === 'rejected' ? h('button', { onClick: function() { onApprove(resume.id); },
+                className: 'flex-1 py-3 bg-green-500 text-white rounded-xl font-semibold hover:bg-green-600 transition-colors' },
+                '↻ 改为通过'
+              ) : null
+            )
+          )
+        )
+      );
+    }
+
     // ─── 导师编辑弹窗 ───
     function TutorEditModal(props) {
       var tutor = props.tutor;
@@ -368,6 +503,14 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
       var isNewTutor = isNewTutorState[0];
       var setIsNewTutor = isNewTutorState[1];
 
+      var teacherResumesState = useState([]);
+      var teacherResumes = teacherResumesState[0];
+      var setTeacherResumes = teacherResumesState[1];
+
+      var selectedResumeState = useState(null);
+      var selectedResume = selectedResumeState[0];
+      var setSelectedResume = selectedResumeState[1];
+
       // 加载数据
       var loadData = async function() {
         var bookingsResult = await supabase.from('bookings').select('*').order('created_at', { ascending: false });
@@ -375,6 +518,9 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
 
         var tutorsResult = await supabase.from('tutors').select('*').order('created_at', { ascending: false });
         if (tutorsResult.data) setTutors(tutorsResult.data);
+
+        var resumesResult = await supabase.from('teacher_resumes').select('*').order('created_at', { ascending: false });
+        if (resumesResult.data) setTeacherResumes(resumesResult.data);
       };
 
       useEffect(function() { loadData(); }, []);
@@ -442,6 +588,29 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
         }
       };
 
+      // 审核教师简历（通过/拒绝）
+      var handleUpdateResumeStatus = async function(resumeId, newStatus) {
+        var result = await supabase.from('teacher_resumes').update({ status: newStatus }).eq('id', resumeId);
+        if (result.error) {
+          alert('操作失败：' + result.error.message);
+          return;
+        }
+        var statusLabel = newStatus === 'approved' ? '审核通过' : '已拒绝';
+        alert('已将该简历标记为：' + statusLabel);
+        setSelectedResume(null);
+        loadData();
+      };
+
+      var handleApproveResume = function(resumeId) {
+        if (!confirm('确认通过该教师的简历申请？')) return;
+        handleUpdateResumeStatus(resumeId, 'approved');
+      };
+
+      var handleRejectResume = function(resumeId) {
+        if (!confirm('确认拒绝该教师的简历申请？')) return;
+        handleUpdateResumeStatus(resumeId, 'rejected');
+      };
+
       // 统计数据
       var pendingCount = bookings.filter(function(b) { return b.status === 'pending'; }).length;
       var todayBookings = bookings.filter(function(b) {
@@ -498,7 +667,10 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
               '预约管理 (' + bookings.length + ')'),
             h('button', { onClick: function() { setActiveTab('tutors'); },
               className: 'px-5 py-2 rounded-lg text-sm font-medium transition-all ' + (activeTab === 'tutors' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700') },
-              '导师管理 (' + tutors.length + ')')
+              '导师管理 (' + tutors.length + ')'),
+            h('button', { onClick: function() { setActiveTab('recruitment'); },
+              className: 'px-5 py-2 rounded-lg text-sm font-medium transition-all ' + (activeTab === 'recruitment' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700') },
+              '教师招聘 (' + teacherResumes.length + ')')
           ),
 
           // 预约列表
@@ -583,11 +755,86 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
           ) : null
         ),
 
+        // 教师招聘列表
+        activeTab === 'recruitment' ? h('div', null,
+          // 统计
+          h('div', { className: 'grid grid-cols-3 gap-4 mb-4' },
+            h('div', { className: 'bg-white rounded-xl p-4 border border-gray-100' },
+              h('p', { className: 'text-xs text-gray-400 mb-1' }, '总简历数'),
+              h('p', { className: 'text-xl font-bold text-gray-900' }, teacherResumes.length)
+            ),
+            h('div', { className: 'bg-white rounded-xl p-4 border border-gray-100' },
+              h('p', { className: 'text-xs text-gray-400 mb-1' }, '待审核'),
+              h('p', { className: 'text-xl font-bold text-yellow-600' }, teacherResumes.filter(function(r) { return r.status === 'pending'; }).length)
+            ),
+            h('div', { className: 'bg-white rounded-xl p-4 border border-gray-100' },
+              h('p', { className: 'text-xs text-gray-400 mb-1' }, '已通过'),
+              h('p', { className: 'text-xl font-bold text-green-600' }, teacherResumes.filter(function(r) { return r.status === 'approved'; }).length)
+            )
+          ),
+          teacherResumes.length === 0 ? h('div', { className: 'bg-white rounded-xl border border-gray-100 text-center py-16 text-gray-400' },
+            h('p', { className: 'text-lg mb-2' }, '暂无简历'),
+            h('p', { className: 'text-sm' }, '教师提交简历后会在这里显示')
+          ) : h('div', { className: 'bg-white rounded-xl border border-gray-100 overflow-hidden' },
+            h('div', { className: 'overflow-x-auto' },
+              h('table', { className: 'w-full' },
+                h('thead', null,
+                  h('tr', { className: 'border-b border-gray-100 bg-gray-50' },
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase' }, '姓名'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase hidden sm:table-cell' }, '性别'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase hidden md:table-cell' }, '毕业院校'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase hidden lg:table-cell' }, '科目'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase' }, '状态'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase hidden sm:table-cell' }, '提交时间'),
+                    h('th', { className: 'text-left px-4 py-3 text-xs font-medium text-gray-400 uppercase' }, '操作')
+                  )
+                ),
+                h('tbody', null,
+                  teacherResumes.map(function(resume) {
+                    var statusInfo = RESUME_STATUS_MAP[resume.status] || RESUME_STATUS_MAP.pending;
+                    return h('tr', { key: resume.id, className: 'border-b border-gray-50 hover:bg-gray-50 transition-colors' },
+                      h('td', { className: 'px-4 py-3' },
+                        h('p', { className: 'font-medium text-gray-900 text-sm' }, resume.name || '未填写'),
+                        resume.phone ? h('p', { className: 'text-xs text-gray-400' }, resume.phone) : null
+                      ),
+                      h('td', { className: 'px-4 py-3 text-sm text-gray-600 hidden sm:table-cell' }, GENDER_MAP[resume.gender] || resume.gender || '未填写'),
+                      h('td', { className: 'px-4 py-3 text-sm text-gray-600 hidden md:table-cell' }, resume.school || '未填写'),
+                      h('td', { className: 'px-4 py-3 text-sm text-gray-600 hidden lg:table-cell' }, resume.subject || '未填写'),
+                      h('td', { className: 'px-4 py-3' },
+                        h('span', { className: 'inline-block px-2.5 py-0.5 rounded-full text-xs font-medium ' + statusInfo.color }, statusInfo.label)
+                      ),
+                      h('td', { className: 'px-4 py-3 text-xs text-gray-400 hidden sm:table-cell' }, resume.created_at ? formatDate(resume.created_at) : '-'),
+                      h('td', { className: 'px-4 py-3' },
+                        h('div', { className: 'flex items-center gap-2' },
+                          h('button', { onClick: function() { setSelectedResume(resume); },
+                            className: 'text-primary-600 hover:text-primary-700 text-sm font-medium' }, '查看'),
+                          resume.status === 'pending' ? h('button', { onClick: function() { handleApproveResume(resume.id); },
+                            className: 'text-green-600 hover:text-green-700 text-xs font-medium px-2 py-1 bg-green-50 rounded-lg hover:bg-green-100 transition-colors' }, '通过') : null,
+                          resume.status === 'pending' ? h('button', { onClick: function() { handleRejectResume(resume.id); },
+                            className: 'text-red-500 hover:text-red-600 text-xs font-medium px-2 py-1 bg-red-50 rounded-lg hover:bg-red-100 transition-colors' }, '拒绝') : null
+                        )
+                      )
+                    );
+                  })
+                )
+              )
+            )
+          )
+        ) : null,
+
         // 预约详情弹窗
         selectedBooking ? h(BookingDetailModal, { booking: selectedBooking, onClose: function() { setSelectedBooking(null); }, onUpdateStatus: handleUpdateBookingStatus, tutors: tutors }) : null,
 
         // 导师编辑弹窗
-        editingTutor ? h(TutorEditModal, { tutor: editingTutor, isNew: isNewTutor, onClose: function() { setEditingTutor(null); setIsNewTutor(false); }, onSave: handleSaveTutor }) : null
+        editingTutor ? h(TutorEditModal, { tutor: editingTutor, isNew: isNewTutor, onClose: function() { setEditingTutor(null); setIsNewTutor(false); }, onSave: handleSaveTutor }) : null,
+
+        // 教师简历详情弹窗
+        selectedResume ? h(TeacherResumeDetailModal, {
+          resume: selectedResume,
+          onClose: function() { setSelectedResume(null); },
+          onApprove: handleApproveResume,
+          onReject: handleRejectResume
+        }) : null
       );
     }
 
