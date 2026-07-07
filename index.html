@@ -779,7 +779,7 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
       var onClose = props.onClose;
       var user = props.user;
 
-      var formState = useState({ name: '', gender: '', school: '', subject: '', phone: '', wechat_id: '', email: '', intro: '' });
+      var formState = useState({ name: '', gender: '', school: '', grade: '', subject: '', phone: '', wechat_id: '', email: '', intro: '' });
       var form = formState[0];
       var setForm = formState[1];
 
@@ -821,6 +821,7 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
         if (!form.name.trim()) e.name = '请输入姓名';
         if (!form.gender) e.gender = '请选择性别';
         if (!form.school.trim()) e.school = '请输入毕业院校';
+        if (!form.grade) e.grade = '请选择年级';
         if (!form.subject) e.subject = '请选择教授科目';
         if (!/^1[3-9]\d{9}$/.test(form.phone)) e.phone = '请输入有效手机号';
         if (!form.wechat_id.trim()) e.wechat_id = '请输入微信号';
@@ -915,6 +916,7 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
             name: form.name.trim(),
             gender: form.gender,
             school: form.school.trim(),
+            grade: form.grade,
             subject: form.subject,
             phone: form.phone.trim(),
             wechat_id: form.wechat_id.trim(),
@@ -944,7 +946,7 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
       };
 
       var handleClose = function() {
-        setForm({ name: '', gender: '', school: '', subject: '', phone: '', wechat_id: '', email: '', intro: '' });
+        setForm({ name: '', gender: '', school: '', grade: '', subject: '', phone: '', wechat_id: '', email: '', intro: '' });
         setErrors({});
         setSuccess(false);
         setIdCardFront({ file: null, url: null, uploading: false });
@@ -1044,6 +1046,19 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
                 errors.school ? h('p', { className: 'text-red-500 text-xs mt-1' }, errors.school) : null
               ),
               h('div', null,
+                h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '教授年级 ', h('span', { className: 'text-red-500' }, '*')),
+                h('select', { value: form.grade, onChange: function(e) { handleChange('grade', e.target.value); },
+                  className: 'w-full px-4 py-2.5 border rounded-xl outline-none transition-all appearance-none bg-white ' + (errors.grade ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100') },
+                  h('option', { value: '' }, '请选择'),
+                  h('option', { value: '小学' }, '小学'),
+                  h('option', { value: '初中' }, '初中'),
+                  h('option', { value: '高中' }, '高中')
+                ),
+                errors.grade ? h('p', { className: 'text-red-500 text-xs mt-1' }, errors.grade) : null
+              )
+            ),
+            h('div', { className: 'grid grid-cols-2 gap-4' },
+              h('div', null,
                 h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '教授科目 ', h('span', { className: 'text-red-500' }, '*')),
                 h('select', { value: form.subject, onChange: function(e) { handleChange('subject', e.target.value); },
                   className: 'w-full px-4 py-2.5 border rounded-xl outline-none transition-all appearance-none bg-white ' + (errors.subject ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100') },
@@ -1051,7 +1066,8 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
                   SUBJECT_OPTIONS.map(function(s) { return h('option', { key: s, value: s }, s); })
                 ),
                 errors.subject ? h('p', { className: 'text-red-500 text-xs mt-1' }, errors.subject) : null
-              )
+              ),
+              h('div', null)
             ),
             h('div', { className: 'grid grid-cols-2 gap-4' },
               h('div', null,
