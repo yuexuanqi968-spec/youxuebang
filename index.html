@@ -900,7 +900,7 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
         setLoading(true);
 
         try {
-          // 构建提交数据
+          // 构建提交数据（仅包含非空字段，避免表中缺少对应列时报错）
           var resumeData = {
             name: form.name.trim(),
             gender: form.gender,
@@ -909,12 +909,12 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
             phone: form.phone.trim(),
             email: form.email.trim() || null,
             intro: form.intro.trim() || null,
-            status: 'pending',
-            id_card_front_url: idCardFront.url || null,
-            id_card_back_url: idCardBack.url || null,
-            degree_cert_url: degreeCert.url || null,
-            teaching_cert_url: teachingCert.url || null
+            status: 'pending'
           };
+          if (idCardFront.url) resumeData.id_card_front_url = idCardFront.url;
+          if (idCardBack.url) resumeData.id_card_back_url = idCardBack.url;
+          if (degreeCert.url) resumeData.degree_cert_url = degreeCert.url;
+          if (teachingCert.url) resumeData.teaching_cert_url = teachingCert.url;
 
           var result = await supabase.from('teacher_resumes').insert(resumeData).select();
 
@@ -1781,7 +1781,7 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
       };
 
       // ─── 密码重置流程 ───
-      var window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;
+      window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== -1;
       if (window.__isPasswordRecovery) {
         return h('div', { className: 'min-h-screen flex items-center justify-center p-4 bg-gray-50' },
           h(ResetPasswordPage, { onDone: function() {
