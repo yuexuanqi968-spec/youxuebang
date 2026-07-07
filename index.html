@@ -773,6 +773,310 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
       );
     }
 
+    // ─── 教师简历投递弹窗 ───
+    function TeacherResumeModal(props) {
+      var isOpen = props.isOpen;
+      var onClose = props.onClose;
+
+      var formState = useState({ name: '', gender: '', school: '', subject: '', phone: '', email: '', intro: '' });
+      var form = formState[0];
+      var setForm = formState[1];
+
+      var errorsState = useState({});
+      var errors = errorsState[0];
+      var setErrors = errorsState[1];
+
+      var loadingState = useState(false);
+      var loading = loadingState[0];
+      var setLoading = loadingState[1];
+
+      var successState = useState(false);
+      var success = successState[0];
+      var setSuccess = successState[1];
+
+      // 上传文件状态
+      var idCardFrontState = useState({ file: null, url: null, uploading: false });
+      var idCardFront = idCardFrontState[0];
+      var setIdCardFront = idCardFrontState[1];
+
+      var idCardBackState = useState({ file: null, url: null, uploading: false });
+      var idCardBack = idCardBackState[0];
+      var setIdCardBack = idCardBackState[1];
+
+      var degreeCertState = useState({ file: null, url: null, uploading: false });
+      var degreeCert = degreeCertState[0];
+      var setDegreeCert = degreeCertState[1];
+
+      var teachingCertState = useState({ file: null, url: null, uploading: false });
+      var teachingCert = teachingCertState[0];
+      var setTeachingCert = teachingCertState[1];
+
+      if (!isOpen) return null;
+
+      var SUBJECT_OPTIONS = ['数学', '英语', '物理', '化学', '生物', '语文', '历史', '地理', '政治'];
+
+      var validate = function() {
+        var e = {};
+        if (!form.name.trim()) e.name = '请输入姓名';
+        if (!form.gender) e.gender = '请选择性别';
+        if (!form.school.trim()) e.school = '请输入毕业院校';
+        if (!form.subject) e.subject = '请选择教授科目';
+        if (!/^1[3-9]\d{9}$/.test(form.phone)) e.phone = '请输入有效手机号';
+        return e;
+      };
+
+      var handleChange = function(field, value) {
+        setForm(function(prev) {
+          var next = Object.assign({}, prev);
+          next[field] = value;
+          return next;
+        });
+        if (errors[field]) {
+          setErrors(function(prev) {
+            var next = Object.assign({}, prev);
+            next[field] = undefined;
+            return next;
+          });
+        }
+      };
+
+      // 上传单个文件到 resume-assets
+      var uploadFile = async function(file, prefix) {
+        var timestamp = Date.now();
+        var safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, '_');
+        var fileName = prefix + '_' + timestamp + '_' + safeName;
+
+        var uploadResult = await supabase.storage
+          .from('resume-assets')
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false
+          });
+
+        if (uploadResult.error) throw new Error(uploadResult.error.message);
+
+        var urlResult = supabase.storage.from('resume-assets').getPublicUrl(fileName);
+        if (urlResult.data && urlResult.data.publicUrl) {
+          return urlResult.data.publicUrl;
+        }
+        throw new Error('获取文件地址失败');
+      };
+
+      var handleFileSelect = function(file, setter, fieldName) {
+        if (!file) return;
+
+        if (!file.type.match(/^image\/(jpeg|png|webp)$/)) {
+          alert(fieldName + '：仅支持 JPG、PNG、WebP 格式');
+          return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          alert(fieldName + '：文件大小不能超过 5MB');
+          return;
+        }
+
+        setter(function(prev) {
+          return Object.assign({}, prev, { file: file, url: null, uploading: true });
+        });
+
+        uploadFile(file, fieldName)
+          .then(function(url) {
+            setter(function(prev) {
+              return Object.assign({}, prev, { url: url, uploading: false });
+            });
+          })
+          .catch(function(err) {
+            alert(fieldName + '上传失败：' + err.message);
+            setter(function(prev) {
+              return Object.assign({}, prev, { file: null, uploading: false });
+            });
+          });
+      };
+
+      var handleSubmit = async function(e) {
+        e.preventDefault();
+        var errs = validate();
+        if (Object.keys(errs).length) { setErrors(errs); return; }
+        setErrors({});
+        setLoading(true);
+
+        try {
+          // 构建提交数据
+          var resumeData = {
+            name: form.name.trim(),
+            gender: form.gender,
+            school: form.school.trim(),
+            subject: form.subject,
+            phone: form.phone.trim(),
+            email: form.email.trim() || null,
+            intro: form.intro.trim() || null,
+            status: 'pending',
+            id_card_front_url: idCardFront.url || null,
+            id_card_back_url: idCardBack.url || null,
+            degree_cert_url: degreeCert.url || null,
+            teaching_cert_url: teachingCert.url || null
+          };
+
+          var result = await supabase.from('teacher_resumes').insert(resumeData).select();
+
+          if (result.error) {
+            alert('提交失败：' + result.error.message);
+            setLoading(false);
+            return;
+          }
+
+          setSuccess(true);
+          setLoading(false);
+        } catch (err) {
+          alert('网络错误，请稍后重试');
+          setLoading(false);
+        }
+      };
+
+      var handleClose = function() {
+        setForm({ name: '', gender: '', school: '', subject: '', phone: '', email: '', intro: '' });
+        setErrors({});
+        setSuccess(false);
+        setIdCardFront({ file: null, url: null, uploading: false });
+        setIdCardBack({ file: null, url: null, uploading: false });
+        setDegreeCert({ file: null, url: null, uploading: false });
+        setTeachingCert({ file: null, url: null, uploading: false });
+        onClose();
+      };
+
+      var renderFileUpload = function(label, desc, state, setter, fieldName) {
+        return h('div', { className: 'border border-gray-200 rounded-xl p-4' },
+          h('div', { className: 'flex items-center justify-between mb-2' },
+            h('div', null,
+              h('p', { className: 'text-sm font-medium text-gray-700' }, label),
+              h('p', { className: 'text-xs text-gray-400 mt-0.5' }, desc)
+            ),
+            state.uploading
+              ? h('span', { className: 'text-xs text-primary-500' }, '上传中...')
+              : state.url
+                ? h('span', { className: 'text-xs text-green-500' }, '✅ 已上传')
+                : null
+          ),
+          state.url
+            ? h('div', { className: 'relative' },
+                h('img', { src: state.url, alt: label, className: 'w-full max-h-40 rounded-lg object-contain border border-gray-100' }),
+                h('button', { onClick: function() {
+                  setter({ file: null, url: null, uploading: false });
+                }, className: 'absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded-lg hover:bg-red-600' }, '删除')
+              )
+            : h('label', { className: 'flex flex-col items-center justify-center h-24 border-2 border-dashed border-gray-200 rounded-lg cursor-pointer hover:border-primary-400 hover:bg-primary-50/30 transition-colors' },
+                h('span', { className: 'text-2xl mb-1' }, '📎'),
+                h('span', { className: 'text-xs text-gray-400' }, '点击选择图片'),
+                h('input', { type: 'file', accept: 'image/jpeg,image/png,image/webp',
+                  onChange: function(e) { if (e.target.files[0]) handleFileSelect(e.target.files[0], setter, fieldName); },
+                  className: 'hidden' })
+              )
+        );
+      };
+
+      // 成功提交页面
+      if (success) {
+        return h('div', { className: 'modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: handleClose },
+          h('div', { className: 'modal-content bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden', onClick: function(e) { e.stopPropagation(); } },
+            h('div', { className: 'p-6 text-center' },
+              h('div', { className: 'flex justify-center mb-4' },
+                h('svg', { width: 56, height: 56, viewBox: '0 0 24 24', fill: 'none', stroke: '#10B981', strokeWidth: 2 },
+                  h('path', { d: 'M22 11.08V12a10 10 0 1 1-5.93-9.14' }),
+                  h('polyline', { points: '22 4 12 14.01 9 11.01' })
+                )
+              ),
+              h('h3', { className: 'text-2xl font-bold text-gray-900 mb-2' }, '简历提交成功！'),
+              h('p', { className: 'text-gray-500 mb-1 text-sm' }, '感谢您的申请'),
+              h('p', { className: 'text-gray-400 mb-6 text-xs' }, '管理员审核通过后会尽快与您联系'),
+              h('button', { onClick: handleClose, className: 'w-full py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors' }, '我知道了')
+            )
+          )
+        );
+      }
+
+      // 表单页面
+      return h('div', { className: 'modal-backdrop fixed inset-0 z-50 flex items-center justify-center p-4', style: { backgroundColor: 'rgba(0,0,0,0.5)' }, onClick: handleClose },
+        h('div', { className: 'modal-content bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto', onClick: function(e) { e.stopPropagation(); } },
+          h('div', { className: 'flex items-center justify-between p-6 border-b border-gray-100 sticky top-0 bg-white z-10' },
+            h('div', null,
+              h('h3', { className: 'text-xl font-bold text-gray-900' }, '教师入驻申请'),
+              h('p', { className: 'text-sm text-gray-500 mt-1' }, '填写以下信息，审核通过后即可上线接单')
+            ),
+            h('button', { onClick: handleClose, className: 'p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-400 hover:text-gray-600' }, h(XIcon))
+          ),
+          h('form', { onSubmit: handleSubmit, className: 'p-6 space-y-4' },
+            // 基本信息
+            h('p', { className: 'text-xs text-gray-400 font-medium uppercase tracking-wide mb-2' }, '基本信息'),
+            h('div', { className: 'grid grid-cols-2 gap-4' },
+              h('div', null,
+                h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '姓名 ', h('span', { className: 'text-red-500' }, '*')),
+                h('input', { type: 'text', value: form.name, onChange: function(e) { handleChange('name', e.target.value); }, placeholder: '请输入姓名',
+                  className: 'w-full px-4 py-2.5 border rounded-xl outline-none transition-all ' + (errors.name ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100') }),
+                errors.name ? h('p', { className: 'text-red-500 text-xs mt-1' }, errors.name) : null
+              ),
+              h('div', null,
+                h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '性别 ', h('span', { className: 'text-red-500' }, '*')),
+                h('select', { value: form.gender, onChange: function(e) { handleChange('gender', e.target.value); },
+                  className: 'w-full px-4 py-2.5 border rounded-xl outline-none transition-all appearance-none bg-white ' + (errors.gender ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100') },
+                  h('option', { value: '' }, '请选择'),
+                  h('option', { value: 'male' }, '男'),
+                  h('option', { value: 'female' }, '女'),
+                  h('option', { value: 'other' }, '其他')
+                ),
+                errors.gender ? h('p', { className: 'text-red-500 text-xs mt-1' }, errors.gender) : null
+              )
+            ),
+            h('div', { className: 'grid grid-cols-2 gap-4' },
+              h('div', null,
+                h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '毕业院校 ', h('span', { className: 'text-red-500' }, '*')),
+                h('input', { type: 'text', value: form.school, onChange: function(e) { handleChange('school', e.target.value); }, placeholder: '请输入毕业院校',
+                  className: 'w-full px-4 py-2.5 border rounded-xl outline-none transition-all ' + (errors.school ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100') }),
+                errors.school ? h('p', { className: 'text-red-500 text-xs mt-1' }, errors.school) : null
+              ),
+              h('div', null,
+                h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '教授科目 ', h('span', { className: 'text-red-500' }, '*')),
+                h('select', { value: form.subject, onChange: function(e) { handleChange('subject', e.target.value); },
+                  className: 'w-full px-4 py-2.5 border rounded-xl outline-none transition-all appearance-none bg-white ' + (errors.subject ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100') },
+                  h('option', { value: '' }, '请选择'),
+                  SUBJECT_OPTIONS.map(function(s) { return h('option', { key: s, value: s }, s); })
+                ),
+                errors.subject ? h('p', { className: 'text-red-500 text-xs mt-1' }, errors.subject) : null
+              )
+            ),
+            h('div', { className: 'grid grid-cols-2 gap-4' },
+              h('div', null,
+                h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '手机号 ', h('span', { className: 'text-red-500' }, '*')),
+                h('input', { type: 'tel', value: form.phone, onChange: function(e) { handleChange('phone', e.target.value); }, placeholder: '请输入手机号',
+                  className: 'w-full px-4 py-2.5 border rounded-xl outline-none transition-all ' + (errors.phone ? 'border-red-400 bg-red-50' : 'border-gray-200 focus:border-primary-500 focus:ring-2 focus:ring-primary-100') }),
+                errors.phone ? h('p', { className: 'text-red-500 text-xs mt-1' }, errors.phone) : null
+              ),
+              h('div', null,
+                h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '邮箱'),
+                h('input', { type: 'email', value: form.email, onChange: function(e) { handleChange('email', e.target.value); }, placeholder: '选填',
+                  className: 'w-full px-4 py-2.5 border border-gray-200 rounded-xl outline-none transition-all focus:border-primary-500 focus:ring-2 focus:ring-primary-100' })
+              )
+            ),
+            h('div', null,
+              h('label', { className: 'block text-sm font-medium text-gray-700 mb-1.5' }, '个人介绍'),
+              h('textarea', { value: form.intro, onChange: function(e) { handleChange('intro', e.target.value); }, rows: '4', placeholder: '请描述您的教学经验、擅长领域、获奖经历等...',
+                className: 'w-full px-4 py-3 border border-gray-200 rounded-xl outline-none transition-all focus:border-primary-500 focus:ring-2 focus:ring-primary-100 resize-none' })
+            ),
+
+            // 证件上传
+            h('p', { className: 'text-xs text-gray-400 font-medium uppercase tracking-wide pt-2 mb-2' }, '证件资料（选填，审核通过率更高）'),
+            renderFileUpload('身份证正面', '上传身份证人像面照片', idCardFront, setIdCardFront, 'id_card_front'),
+            renderFileUpload('身份证反面', '上传身份证国徽面照片', idCardBack, setIdCardBack, 'id_card_back'),
+            renderFileUpload('学历证书', '上传毕业证或学位证照片', degreeCert, setDegreeCert, 'degree_cert'),
+            renderFileUpload('教师资格证', '上传教师资格证照片（如有）', teachingCert, setTeachingCert, 'teaching_cert'),
+
+            h('button', { type: 'submit', disabled: loading,
+              className: 'w-full py-3.5 bg-accent-500 text-white rounded-xl font-semibold hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2' },
+              loading ? h('span', { className: 'flex items-center gap-2' }, h(LoadingIcon), '提交中...') : '提交申请'
+            )
+          )
+        )
+      );
+    }
+
     // ─── Tutor Card ───
     function TutorCard(props) {
       var tutor = props.tutor;
@@ -820,6 +1124,7 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
       var user = props.user;
       var onMyBookingsClick = props.onMyBookingsClick;
       var onLogout = props.onLogout;
+      var onTeacherResumeClick = props.onTeacherResumeClick;
 
       var menuState = useState(false);
       var menuOpen = menuState[0];
@@ -983,6 +1288,7 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
                     )
                   )
                 : h('button', { onClick: openAuth, className: 'px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-xl transition-colors cursor-pointer' }, '登录'),
+              h('button', { onClick: function() { if (onTeacherResumeClick) onTeacherResumeClick(); }, className: 'px-4 py-2.5 text-sm font-medium text-primary-600 border border-primary-200 rounded-xl hover:bg-primary-50 transition-all' }, '教师入驻'),
               h('button', { onClick: onBookClick, className: 'px-5 py-2.5 bg-accent-500 text-white text-sm font-semibold rounded-xl hover:bg-accent-600 transition-all hover:shadow-lg hover:shadow-accent-200' }, '免费试听')
             ),
             h('button', { className: 'md:hidden p-3 hover:bg-gray-100 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center', onClick: function() { setMenuOpen(!menuOpen); } },
@@ -1005,7 +1311,8 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
                     )
                   )
                 : h('button', { onClick: function() { openAuth(); setMenuOpen(false); }, className: 'w-full text-left px-4 py-3 text-gray-700 font-medium hover:bg-gray-50 rounded-xl cursor-pointer' }, '登录'),
-              h('button', { onClick: function() { onBookClick(); setMenuOpen(false); }, className: 'w-full py-3 bg-accent-500 text-white rounded-xl font-semibold' }, '免费试听')
+              h('button', { onClick: function() { onBookClick(); setMenuOpen(false); }, className: 'w-full py-3 bg-accent-500 text-white rounded-xl font-semibold' }, '免费试听'),
+              h('button', { onClick: function() { if (onTeacherResumeClick) onTeacherResumeClick(); setMenuOpen(false); }, className: 'w-full py-3 border border-primary-200 text-primary-600 rounded-xl font-semibold hover:bg-primary-50 transition-colors' }, '教师入驻')
             )
           )
         ) : null,
@@ -1249,6 +1556,35 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
       );
     }
 
+    // ─── 教师入驻 CTA ───
+    function TeacherCTASection(props) {
+      var onClick = props.onClick;
+      return h('section', { className: 'py-16 bg-gradient-to-r from-primary-600 to-primary-800' },
+        h('div', { className: 'max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center' },
+          h('h2', { className: 'text-3xl lg:text-4xl font-extrabold text-white mb-4' }, '成为优学帮认证教师'),
+          h('p', { className: 'text-primary-200 text-lg mb-8 max-w-2xl mx-auto' },
+            '加入我们，连接数千名渴望进步的学生。灵活排课、优厚时薪、专业成长机会。'
+          ),
+          h('div', { className: 'flex flex-wrap justify-center gap-6 mb-8' },
+            [
+              { icon: '💰', text: '时薪150-300元' },
+              { icon: '🕐', text: '灵活排课，自主接单' },
+              { icon: '🎓', text: '免费教学培训资源' },
+              { icon: '📈', text: '持续生源保障' }
+            ].map(function(item) {
+              return h('div', { key: item.text, className: 'flex items-center gap-2 text-white bg-white/10 rounded-xl px-5 py-3' },
+                h('span', { className: 'text-xl' }, item.icon),
+                h('span', { className: 'text-sm font-medium' }, item.text)
+              );
+            })
+          ),
+          h('button', { onClick: onClick, className: 'px-8 py-4 bg-white text-primary-700 font-bold text-lg rounded-xl hover:bg-primary-50 transition-all hover:shadow-2xl hover:shadow-white/20 active:scale-[0.98]' },
+            '立即申请入驻 →'
+          )
+        )
+      );
+    }
+
     // ─── Footer ───
     function Footer() {
       var links = {
@@ -1364,6 +1700,10 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
       var bookingsModalOpen = bookingsModalState[0];
       var setBookingsModalOpen = bookingsModalState[1];
 
+      var teacherResumeModalState = useState(false);
+      var teacherResumeModalOpen = teacherResumeModalState[0];
+      var setTeacherResumeModalOpen = teacherResumeModalState[1];
+
       var authCheckingState = useState(true);
       var authChecking = authCheckingState[0];
       var setAuthChecking = authCheckingState[1];
@@ -1431,6 +1771,10 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
         setSearchSubject(subject);
       };
 
+      var handleTeacherResumeClick = function() {
+        setTeacherResumeModalOpen(true);
+      };
+
       var handleLogout = async function() {
         await supabase.auth.signOut();
         setUser(null);
@@ -1453,16 +1797,19 @@ window.__isPasswordRecovery = window.location.hash.indexOf('type=recovery') !== 
           user: user,
           onLoginSuccess: function(u) { setUser(u); },
           onMyBookingsClick: function() { setBookingsModalOpen(true); },
-          onLogout: handleLogout
+          onLogout: handleLogout,
+          onTeacherResumeClick: handleTeacherResumeClick
         }),
         h(HeroSection, { onBookClick: function() { handleBook(null); }, onSearch: handleSearch, user: user }),
         h(FilterSection, { onBookClick: handleBook, tutors: tutors, loading: loading, searchSubject: searchSubject, user: user }),
         h(StatsSection),
         h(FeaturesSection),
+        h(TeacherCTASection, { onClick: handleTeacherResumeClick }),
         h(Footer),
         h(BookingModal, { isOpen: modalOpen, onClose: function() { setModalOpen(false); }, tutor: selectedTutor, onBookingSuccess: handleBookingSuccess, user: user }),
         h(PaymentModal, { isOpen: paymentOpen, onClose: function() { setPaymentOpen(false); }, bookingInfo: bookingInfo, user: user }),
-        h(MyBookingsModal, { isOpen: bookingsModalOpen, onClose: function() { setBookingsModalOpen(false); }, user: user })
+        h(MyBookingsModal, { isOpen: bookingsModalOpen, onClose: function() { setBookingsModalOpen(false); }, user: user }),
+        h(TeacherResumeModal, { isOpen: teacherResumeModalOpen, onClose: function() { setTeacherResumeModalOpen(false); } })
       );
     }
 
